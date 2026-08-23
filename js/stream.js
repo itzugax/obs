@@ -89,7 +89,10 @@
       w.style.color = el.txtColor || "#fff";
       w.style.fontWeight = el.bold ? "bold" : "normal";
       w.style.fontStyle = el.italic ? "italic" : "normal";
-      w.style.fontSize = (el.fontSize || 56) + "px";
+      var baseFs = el.fontSize || 56;
+      var hRatio = (el.h || 0.08) / 0.08;
+      var dynFs = Math.max(8, Math.round(baseFs * hRatio));
+      w.style.fontSize = dynFs + "px";
       w.style.lineHeight = "1.2";
       w.style.webkitTextStroke = "3px #000000";
       w.style.textShadow = "2px 2px 6px rgba(0,0,0,0.8)";

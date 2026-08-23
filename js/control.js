@@ -408,7 +408,10 @@
       wrap.style.color = el.txtColor || "#fff";
       wrap.style.fontWeight = el.bold ? "bold" : "normal";
       wrap.style.fontStyle = el.italic ? "italic" : "normal";
-      wrap.style.fontSize = (el.fontSize || 56) + "px";
+      var baseFs = el.fontSize || 56;
+      var hRatio = (el.h || 0.08) / 0.08;
+      var dynFs = Math.max(8, Math.round(baseFs * hRatio));
+      wrap.style.fontSize = dynFs + "px";
       wrap.style.lineHeight = "1.2";
       wrap.style.webkitTextStroke = "3px #000000";
       wrap.style.textShadow = "2px 2px 6px rgba(0,0,0,0.8)";
