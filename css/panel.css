@@ -1,14 +1,14 @@
 :root {
-  --bg: #0e0e10;
-  --panel: #18181b;
-  --surface: #1f1f23;
-  --row: #26262b;
-  --row-hover: #2f2f35;
-  --row-sel: #53fc18;
-  --border: #2f2f35;
-  --text: #d1d1d3;
+  --bg: #0b0e14;
+  --panel: #131722;
+  --surface: #1e2230;
+  --row: #242938;
+  --row-hover: #2f3548;
+  --row-sel: #2a3144;
+  --border: #333a4d;
+  --text: #f1f5f9;
   --text-bright: #ffffff;
-  --muted: #6b7280;
+  --muted: #94a3b8;
   --accent: #53fc18;
   --accent-hover: #42d914;
   --ok: #53fc18;
@@ -763,18 +763,20 @@ input[type="range"] {
   font-size: 13px;
   min-height: 36px;
   transition: all 0.12s;
-  border: 1px solid transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
 }
 
 .row:hover {
   background: var(--row-hover);
-  border-color: var(--border);
+  border-color: rgba(83, 252, 24, 0.3);
 }
 
 .row.selected {
   background: var(--row-sel);
   color: var(--text-bright);
-  border-color: var(--row-sel);
+  border-color: rgba(83, 252, 24, 0.5);
+  border-left: 3px solid var(--kick-green);
 }
 
 .row.off {
@@ -784,22 +786,25 @@ input[type="range"] {
 .row .r-icon {
   font-size: 11px;
   flex-shrink: 0;
-  width: 24px;
-  height: 20px;
+  padding: 2px 6px;
+  height: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 700;
   color: var(--accent);
-  background: rgba(59, 130, 246, 0.15);
-  border-radius: 3px;
+  background: rgba(83, 252, 24, 0.12);
+  border: 1px solid rgba(83, 252, 24, 0.25);
+  border-radius: 4px;
   font-family: monospace;
   letter-spacing: -0.5px;
 }
 
 .row.selected .r-icon {
-  color: var(--text-bright);
-  background: rgba(255, 255, 255, 0.2);
+  color: #050505;
+  background: var(--accent);
+  border-color: var(--accent);
+  font-weight: 800;
 }
 
 .row .r-name {
@@ -808,24 +813,29 @@ input[type="range"] {
   text-overflow: ellipsis;
   white-space: nowrap;
   min-width: 0;
-  font-weight: 500;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.row.selected .r-name {
+  color: #ffffff;
 }
 
 .row .r-badge {
-  font-size: 9px;
+  font-size: 10px;
   background: var(--surface);
   color: var(--muted);
-  padding: 2px 5px;
+  padding: 2px 6px;
   border-radius: 3px;
-  font-weight: 600;
+  font-weight: 700;
   flex-shrink: 0;
   border: 1px solid var(--border);
 }
 
 .row.selected .r-badge {
-  background: rgba(255, 255, 255, 0.15);
-  color: rgba(255, 255, 255, 0.8);
-  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.25);
 }
 
 /* Icon buttons */

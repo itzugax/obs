@@ -857,10 +857,15 @@
 
     var btnLogout = document.getElementById("btn-logout");
     if (btnLogout) {
-      btnLogout.addEventListener("click", function() {
-        if (confirm("\u00BFSeguro que quieres salir de esta sala mi rey?")) {
+      btnLogout.addEventListener("click", function(e) {
+        e.preventDefault();
+        if (confirm("¿Seguro que quieres salir de esta sala mi rey?")) {
+          sessionStorage.removeItem("ugax_active_session");
           localStorage.removeItem("ugax_last_room");
-          var base = window.location.href.split("?")[0];
+          if (db && _currentUser && _currentUser.uid) {
+            db.ref("rooms/" + streamId + "/presence/users/" + _currentUser.uid).remove();
+          }
+          var base = window.location.origin + window.location.pathname;
           window.location.href = base;
         }
       });
@@ -883,7 +888,7 @@
     var btnClearAll = document.getElementById("btn-clear-all");
     if (btnClearAll) {
       btnClearAll.addEventListener("click", function() {
-        if (!confirm("\u00BFSeguro que quieres mandar to a la verga y limpiar el stream?")) return;
+        if (!confirm("¿Seguro que quieres mandar to a la verga y limpiar el stream?")) return;
         if (roomRef) roomRef.remove();
         closeEdit();
         selectedId = null;
@@ -921,20 +926,24 @@
   /* === Add URL === */
   function initAddUrl() {
     var btn = document.getElementById("addUrl");
-    if (!btn) return;
-    btn.addEventListener("click", function() {
-      var u = document.getElementById("urlIn").value.trim();
-      if (!u) { alert("Pega un link primero mano xD"); return; }
+    var inUrl = document.getElementById("urlIn");
+    if (!btn || !inUrl) return;
+
+    function doAddUrl() {
+      var u = inUrl.value.trim();
+      if (!u) { alert("Pega un link primero mano xD"); inUrl.focus(); return; }
       var t = detectType(u);
       if (!t) { alert("No se pudo detectar el formato. Pon JPG, PNG, GIF, MP4 o MP3 pe."); return; }
       if (!roomRef) { alert("Sin conexión a Firebase papu. F5 para revivir."); return; }
       var id = roomRef.push().key;
+      var author = _currentUser.name || localStorage.getItem("ugax_user") || "streamer";
       var base = {
         type: t, url: u, x: 0.1, y: 0.1, w: 0.35, h: 0.25,
         z: getNextZ(), opacity: 100, visible: true,
-        name: shortName(u), locked: false,
-        addedBy: _currentUser.name,
-        addedByPhoto: _currentUser.photoURL
+        name: "@" + author,
+        locked: false,
+        addedBy: author,
+        addedByPhoto: _currentUser.photoURL || localStorage.getItem("ugax_user_photo") || ""
       };
       if (t === "image") {
         base.objectFit = "contain";
@@ -955,37 +964,57 @@
       if (t === "audio") { base.volume = 100; base.loop = false; base.w = 0.20; base.h = 0.08; }
       if (t === "video") { base.volume = 100; base.loop = false; base.objectFit = "contain"; }
       roomRef.child(id).set(base);
-      document.getElementById("urlIn").value = "";
+      inUrl.value = "";
       selectRow(id);
       openEdit(id);
+    }
+
+    btn.addEventListener("click", doAddUrl);
+    inUrl.addEventListener("keydown", function(e) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        doAddUrl();
+      }
     });
   }
 
   /* === Add Text === */
   function initAddText() {
     var btn = document.getElementById("addTxt");
-    if (!btn) return;
-    btn.addEventListener("click", function() {
-      var txt = document.getElementById("txtIn").value.trim();
-      if (!txt) { alert("Escribe algo pe, no lo dejes vacío xD"); return; }
+    var inTxt = document.getElementById("txtIn");
+    if (!btn || !inTxt) return;
+
+    function doAddText() {
+      var txt = inTxt.value.trim();
+      if (!txt) { alert("Escribe algo pe, no lo dejes vacío xD"); inTxt.focus(); return; }
       if (!roomRef) { alert("Sin conexión a Firebase papu. F5 para revivir."); return; }
       var id = roomRef.push().key;
       var bounds = calcTightTextBounds(txt);
+      var author = _currentUser.name || localStorage.getItem("ugax_user") || "streamer";
       roomRef.child(id).set({
         type: "text",
         x: 0.1, y: 0.1, w: bounds.w, h: bounds.h,
         z: getNextZ(), opacity: 100, visible: true,
-        name: shortName(txt), locked: false,
-        addedBy: _currentUser.name,
-        addedByPhoto: _currentUser.photoURL,
+        name: "@" + author,
+        locked: false,
+        addedBy: author,
+        addedByPhoto: _currentUser.photoURL || localStorage.getItem("ugax_user_photo") || "",
         text: txt, fontSize: 56,
         textColor: "#ffffff", strokeColor: "#000000", strokeWidth: 5,
         fontFamily: "'Comic Sans MS', 'Comic Sans', cursive",
         bgType: "none", bgColor: "#000000", bgOpacity: 0
       });
-      document.getElementById("txtIn").value = "";
+      inTxt.value = "";
       selectRow(id);
       openEdit(id);
+    }
+
+    btn.addEventListener("click", doAddText);
+    inTxt.addEventListener("keydown", function(e) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        doAddText();
+      }
     });
   }
 
@@ -1785,7 +1814,6 @@
     r.innerHTML =
       '<span class="r-icon"></span>' +
       '<span class="r-name"></span>' +
-      '<span class="layer-author-info"><img class="layer-author-pfp" src=""><span class="layer-author-name"></span></span>' +
       '<span class="r-badge"></span>' +
       '<button class="ibtn layer-up" title="Traer 1 paso adelante">&#9650;</button>' +
       '<button class="ibtn layer-down" title="Enviar 1 paso atrás">&#9660;</button>' +
@@ -1846,19 +1874,11 @@
   }
 
   function upRow(r, id, el, rankIndex, totalCount) {
-    var icons = { image: "IMG", video: "VID", audio: "AUD", text: "TXT" };
-    r.querySelector(".r-icon").textContent = icons[el.type] || "???";
-    r.querySelector(".r-name").textContent = el.name || id.slice(-6);
+    var icons = { image: "🖼️ IMG", video: "🎥 VID", audio: "🎵 AUD", text: "✍️ TXT" };
+    r.querySelector(".r-icon").textContent = icons[el.type] || "CAP";
+    var displayName = el.name || (el.addedBy ? "@" + el.addedBy : "Capa " + id.slice(-4));
+    r.querySelector(".r-name").textContent = displayName;
     r.querySelector(".r-badge").textContent = "#" + (totalCount - rankIndex);
-
-    var authorPfp = r.querySelector(".layer-author-pfp");
-    var authorName = r.querySelector(".layer-author-name");
-    var authorContainer = r.querySelector(".layer-author-info");
-    var author = el.addedBy || "invitado";
-    var photo = el.addedByPhoto || ("https://api.dicebear.com/7.x/bottts/svg?seed=" + encodeURIComponent(author));
-    if (authorPfp) authorPfp.src = photo;
-    if (authorName) authorName.textContent = author;
-    if (authorContainer) authorContainer.title = "Añadido por @" + author;
 
     var eye = r.querySelector(".eye-btn");
     if (el.visible !== false) {
@@ -1877,7 +1897,7 @@
     } else {
       lock.innerHTML = "&#128275;";
       lock.className = "ibtn lock-btn";
-      lock.title = "Bloquear capa pa no cagarla";
+      lock.title = "Bloquear capa";
     }
 
     if (el.visible === false) r.classList.add("off");
