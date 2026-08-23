@@ -155,25 +155,11 @@
     </main>
   </div>
 
-  <!-- Error banner -->
-  <div id="load-error" style="display:none;position:fixed;bottom:0;left:0;right:0;background:#dc2626;color:#fff;padding:10px 16px;font-size:13px;z-index:9999;text-align:center"></div>
-
-  <!-- Scripts with error handling -->
-  <script>
-    var _loadErrors = [];
-    function _onScriptError(name) {
-      _loadErrors.push(name);
-      var el = document.getElementById("load-error");
-      if (el) {
-        el.style.display = "block";
-        el.innerHTML = "&#9888; No se pudo cargar: " + _loadErrors.join(", ") + " — Intenta recargar o usa otro navegador";
-      }
-    }
-  </script>
-  <script src="https://cdn.jsdelivr.net/npm/interactjs@1.10.18/dist/interact.min.js" onerror="_onScriptError('interact.js')"></script>
-  <script src="https://cdn.jsdelivr.net/npm/firebase@8.10.1/firebase-app.js" onerror="_onScriptError('Firebase App')"></script>
-  <script src="https://cdn.jsdelivr.net/npm/firebase@8.10.1/firebase-database.js" onerror="_onScriptError('Firebase Database')"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" onerror="_onScriptError('Supabase')"></script>
+  <!-- Scripts locales (sin CDN, sin dependencia de internet) -->
+  <script src="lib/interact.min.js"></script>
+  <script src="lib/firebase-app.js"></script>
+  <script src="lib/firebase-database.js"></script>
+  <script src="lib/supabase.min.js"></script>
   <script src="js/control.js"></script>
 </body>
 </html>
