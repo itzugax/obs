@@ -66,9 +66,10 @@ input[type="range"]{width:100%;accent-color:var(--accent);height:4px}
 .row .icon{font-size:12px;flex-shrink:0;width:18px;text-align:center}
 .row .name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);min-width:0}
 .row .vol{width:50px;flex-shrink:0}
-.ibtn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;padding:2px 3px;border-radius:3px;transition:color .15s;flex-shrink:0}
+.ibtn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:2px 4px;border-radius:3px;transition:color .15s;flex-shrink:0;line-height:1}
 .ibtn:hover{color:var(--text)}
-.ibtn.active{color:var(--accent)}
+.ibtn.on{color:var(--ok)}
+.ibtn.edit:hover{color:var(--accent)}
 .ibtn.danger:hover{color:var(--danger)}
 .empty{text-align:center;color:var(--muted);font-size:12px;padding:20px 0}
 

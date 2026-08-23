@@ -277,27 +277,20 @@ function renderRow(el) {
     row.dataset.id = el.id;
 
     var volVal = el.volume != null ? Math.round(el.volume * 100) : 80;
-    var playIcon = el.playing !== false ? "Pausa" : "Play";
-    var eyeIcon = el.visible !== false ? "Ojo" : "OjoX";
 
     row.innerHTML =
       '<span class="icon">' + typeIcon(el.type) + '</span>' +
       '<span class="name">' + (el.type === "text" ? (el.content || "").slice(0, 14) : nameFromUrl(el.url || "")) + '</span>' +
       (el.type !== "text" ? '<input class="vol" type="range" min="0" max="100" value="' + volVal + '" title="Volumen">' : '') +
-      '<button class="ibtn edit" title="Editar">Edit</button>' +
-      '<button class="ibtn eye" title="Visibilidad">' + eyeIcon + '</button>' +
-      '<button class="ibtn play" title="Play/Pause">' + playIcon + '</button>' +
-      '<button class="ibtn front" title="Traer al frente">Top</button>' +
-      '<button class="ibtn danger" title="Eliminar">X</button>';
+      '<button class="ibtn edit" title="Editar">✎</button>' +
+      '<button class="ibtn eye" title="Mostrar / Ocultar">◉</button>' +
+      '<button class="ibtn play" title="Reproducir / Pausar">▶</button>' +
+      '<button class="ibtn front" title="Traer al frente">▲</button>' +
+      '<button class="ibtn danger" title="Eliminar">✕</button>';
 
-    /* Volumen */
-    var vol = row.querySelector(".vol");
-    if (vol) {
-      vol.addEventListener("input", function () {
-        var v = parseInt(this.value) / 100;
-        roomRef.child(el.id).update({ volume: r4(v) });
-      });
-    }
+    row.querySelector(".vol") && row.querySelector(".vol").addEventListener("input", function () {
+      roomRef.child(el.id).update({ volume: r4(parseInt(this.value) / 100) });
+    });
 
     row.querySelector(".eye").addEventListener("click", function () {
       var cur = state.get(el.id);
@@ -319,6 +312,21 @@ function renderRow(el) {
 
     listEl.appendChild(row);
     rows.set(el.id, row);
+  }
+
+  /* Actualizar iconos segun estado actual */
+  var eyeBtn = row.querySelector(".eye");
+  if (eyeBtn) {
+    eyeBtn.textContent = el.visible !== false ? "◉" : "○";
+    eyeBtn.classList.toggle("on", el.visible !== false);
+  }
+  var playBtn = row.querySelector(".play");
+  if (playBtn) {
+    playBtn.textContent = el.playing !== false ? "▶" : "⏸";
+  }
+  var nameSpan = row.querySelector(".name");
+  if (nameSpan) {
+    nameSpan.textContent = el.type === "text" ? (el.content || "").slice(0, 14) : nameFromUrl(el.url || "");
   }
 
   row.classList.toggle("off", el.visible === false);
