@@ -222,7 +222,7 @@
     }
   }
 
-  /* === Social Auth (Google / YouTube & Discord) === */
+  /* === Social Auth (Real Google / YouTube & Discord) === */
   function initSocialAuth() {
     var btnGoogle = document.getElementById("btn-google-login");
     var btnDiscord = document.getElementById("btn-discord-login");
@@ -282,74 +282,32 @@
       }
     }
 
-    // Fallback Identity Modal setup
-    var socialModal = document.getElementById("social-auth-modal");
-    var socialTitle = document.getElementById("social-auth-title");
-    var socialSub = document.getElementById("social-auth-subtitle");
-    var socialInput = document.getElementById("social-auth-input");
-    var btnConfirmSocial = document.getElementById("btn-confirm-social-auth");
-    var btnCloseSocial = document.getElementById("btn-close-social-auth");
-    var presetImgs = Array.from(document.querySelectorAll(".preset-avatar"));
-    var _selectedSeed = "itzugax1";
-    var _pendingProvider = "Google";
-
-    if (btnCloseSocial && socialModal) btnCloseSocial.onclick = function() { socialModal.style.display = "none"; };
-
-    presetImgs.forEach(function(img) {
-      img.addEventListener("click", function() {
-        presetImgs.forEach(function(i) { i.classList.remove("active"); });
-        img.classList.add("active");
-        _selectedSeed = img.getAttribute("data-seed") || "1";
-      });
-    });
-
-    function openSocialModal(providerName) {
-      _pendingProvider = providerName || "Google";
-      if (socialTitle) socialTitle.textContent = "🔒 Conectar con " + _pendingProvider;
-      if (socialSub) socialSub.textContent = "Ingresa tu usuario / canal de " + _pendingProvider + " para verificar tu perfil:";
-      if (socialInput) socialInput.value = localStorage.getItem("ugax_user") || "";
-      if (socialModal) socialModal.style.display = "flex";
-      if (socialInput) socialInput.focus();
-    }
-
-    if (btnConfirmSocial) {
-      btnConfirmSocial.addEventListener("click", function() {
-        var rawName = (socialInput ? socialInput.value.trim() : "").toLowerCase().replace(/[^a-z0-9_.-]/g, "") || "streamer";
-        var photo = "https://api.dicebear.com/7.x/bottts/svg?seed=" + encodeURIComponent(_selectedSeed + rawName);
-
-        _currentUser.uid = "soc-" + Math.floor(Math.random() * 89999 + 10000);
-        _currentUser.name = rawName;
-        _currentUser.photoURL = photo;
-        _currentUser.provider = _pendingProvider + " Verificado";
-
-        localStorage.setItem("ugax_user", _currentUser.name);
-        localStorage.setItem("ugax_user_photo", _currentUser.photoURL);
-        localStorage.setItem("ugax_user_provider", _currentUser.provider);
-
-        if (socialModal) socialModal.style.display = "none";
-        showProfile();
-      });
-    }
-
-    // Google Login Handler
+    // REAL Google Login Handler
     if (btnGoogle) {
       btnGoogle.addEventListener("click", function() {
         try {
           ensureFirebase();
           var provider = new firebase.auth.GoogleAuthProvider();
+          provider.addScope('profile');
+          provider.addScope('email');
+
           firebase.auth().signInWithPopup(provider).then(function(res) {
             handleAuthSuccess(res.user, "Google");
           }).catch(function(err) {
-            console.warn("Firebase Google Auth fallback activated:", err);
-            openSocialModal("Google / YouTube");
+            console.warn("Google popup error, trying redirect...", err);
+            if (err.code === "auth/popup-blocked" || err.code === "auth/popup-closed-by-user") {
+              firebase.auth().signInWithRedirect(provider);
+            } else {
+              alert("Error al iniciar sesión con Google (" + err.code + "): " + err.message + "\n\nAsegúrate de habilitar Google Auth en Firebase Console.");
+            }
           });
         } catch (e) {
-          openSocialModal("Google / YouTube");
+          console.error("Google Auth error:", e);
         }
       });
     }
 
-    // Discord Login Handler
+    // REAL Discord Login Handler
     if (btnDiscord) {
       btnDiscord.addEventListener("click", function() {
         try {
@@ -358,11 +316,15 @@
           firebase.auth().signInWithPopup(provider).then(function(res) {
             handleAuthSuccess(res.user, "Discord");
           }).catch(function(err) {
-            console.warn("Firebase Discord Auth fallback activated:", err);
-            openSocialModal("Discord");
+            console.warn("Discord popup error, trying redirect...", err);
+            if (err.code === "auth/popup-blocked" || err.code === "auth/popup-closed-by-user") {
+              firebase.auth().signInWithRedirect(provider);
+            } else {
+              alert("Error al iniciar sesión con Discord (" + err.code + "): " + err.message + "\n\nAsegúrate de habilitar el proveedor de Discord en Firebase Console.");
+            }
           });
         } catch (e) {
-          openSocialModal("Discord");
+          console.error("Discord Auth error:", e);
         }
       });
     }
@@ -370,6 +332,10 @@
     // Sign out button
     if (btnLogoutGoogle) {
       btnLogoutGoogle.addEventListener("click", function() {
+        try {
+          ensureFirebase();
+          firebase.auth().signOut();
+        } catch(e) {}
         localStorage.removeItem("ugax_user_photo");
         localStorage.removeItem("ugax_user_provider");
         _currentUser.photoURL = "";
@@ -378,12 +344,16 @@
       });
     }
 
-    // Check redirect result or existing auth
+    // Listen for Real Firebase Auth State changes
     try {
       ensureFirebase();
-      firebase.auth().getRedirectResult().then(function(res) {
-        if (res && res.user) {
-          handleAuthSuccess(res.user, "Verificado");
+      firebase.auth().onAuthStateChanged(function(user) {
+        if (user) {
+          var provName = "Google";
+          if (user.providerData && user.providerData[0] && user.providerData[0].providerId.includes("discord")) {
+            provName = "Discord";
+          }
+          handleAuthSuccess(user, provName);
         } else if (localStorage.getItem("ugax_user_photo")) {
           _currentUser.name = localStorage.getItem("ugax_user") || "streamer";
           _currentUser.photoURL = localStorage.getItem("ugax_user_photo") || "";
@@ -392,8 +362,6 @@
         } else {
           showProfile();
         }
-      }).catch(function() {
-        showProfile();
       });
     } catch(e) {
       showProfile();
