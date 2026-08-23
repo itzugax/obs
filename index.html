@@ -9,105 +9,153 @@
 </head>
 <body>
   <header>
-    <h1>Control de UGAX</h1>
+    <h1>&#127918; Control de UGAX</h1>
     <span id="stream-label">sala-stream-demo</span>
-    <div id="conn"><div class="dot" id="dot"></div><span id="conn-txt">Conectado papu</span></div>
+    <div id="conn">
+      <div class="dot" id="dot"></div>
+      <span id="conn-txt">Conectado papu</span>
+    </div>
   </header>
+
   <div class="layout">
     <aside>
       <div class="sidebar-top">
-        <section class="card">
-          <div class="tabs">
-            <button class="tab active" data-tab="tab-url">URL</button>
-            <button class="tab" data-tab="tab-arch">Archivo</button>
-            <button class="tab" data-tab="tab-txt">Texto</button>
+        <!-- Tabs -->
+        <div class="tabs">
+          <button class="tab active" data-tab="tab-url">&#128279; URL</button>
+          <button class="tab" data-tab="tab-arch">&#128193; Archivo</button>
+          <button class="tab" data-tab="tab-txt">&#128196; Texto</button>
+        </div>
+
+        <!-- URL Tab -->
+        <div class="tab-body active" id="tab-url">
+          <label>URL del recurso</label>
+          <input type="url" id="urlIn" placeholder="https://i.imgur.com/foto.jpg">
+          <div class="hint">Soporta <b>JPG, PNG, GIF</b> (imagen) &middot; <b>MP4, WEBM</b> (video) &middot; <b>MP3</b> (audio)</div>
+          <button class="btn primary" id="addUrl">&#10010; Agregar al stream</button>
+        </div>
+
+        <!-- File Tab -->
+        <div class="tab-body" id="tab-arch">
+          <div class="drop-zone" id="drop-zone">
+            <div class="drop-icon">&#128228;</div>
+            Arrastra archivos aqui o haz click para subir
+            <div class="hint">Sube a <b>Supabase Storage</b> (gratis)</div>
           </div>
-          <div class="tab-body active" id="tab-url">
-            <label>URL del recurso</label>
-            <input type="url" id="urlIn" placeholder="https://i.imgur.com/foto.jpg">
-            <div class="hint">Soporta JPG, PNG, GIF, MP4, MP3, WEBM</div>
-            <button class="btn primary" id="addUrl">Agregar</button>
+          <input type="file" id="fileIn" multiple accept="image/*,video/*,audio/*" style="display:none">
+          <div class="upload-list" id="upload-list"></div>
+        </div>
+
+        <!-- Text Tab -->
+        <div class="tab-body" id="tab-txt">
+          <label>Texto a mostrar</label>
+          <input type="text" id="txtIn" placeholder="Escribe aqui tu texto...">
+          <div class="grid2" style="margin-top:8px">
+            <div>
+              <label>Tamano</label>
+              <select id="selSz">
+                <option value="24">Chico</option>
+                <option value="36">Mediano</option>
+                <option value="56" selected>Grande</option>
+                <option value="80">Gigante</option>
+              </select>
+            </div>
+            <div>
+              <label>Fondo</label>
+              <select id="selBg">
+                <option value="none" selected>Sin fondo</option>
+                <option value="solid">Con fondo</option>
+              </select>
+            </div>
           </div>
-          <div class="tab-body" id="tab-arch">
-            <div class="drop-zone" id="drop-zone">
-              <div class="drop-icon">+</div>
-              Arrastra archivos aqui o haz click
-              <div class="hint">Sube a <b>Supabase Storage</b></div>
+          <div class="grid2">
+            <div>
+              <label>Color del texto</label>
+              <input type="color" id="txtCol" value="#ffffff">
             </div>
-            <input type="file" id="fileIn" multiple accept="image/*,video/*,audio/*" style="display:none">
-            <div class="upload-list" id="upload-list"></div>
+            <div>
+              <label>Color de fondo</label>
+              <input type="color" id="txtBgCol" value="#000000">
+            </div>
           </div>
-          <div class="tab-body" id="tab-txt">
-            <label>Texto</label>
-            <input type="text" id="txtIn" placeholder="Escribe aqui...">
-            <div class="grid2" style="margin-top:4px">
-              <div><label>Tamano</label>
-                <select id="selSz"><option value="36">Chico</option><option value="48" selected>Mediano</option><option value="72">Grande</option><option value="96">Gigante</option></select>
-              </div>
-              <div><label>Fondo</label>
-                <select id="selBg"><option value="none" selected>Ninguno</option><option value="solid">Solido</option></select>
-              </div>
-            </div>
-            <div class="grid2">
-              <div><label>Color fondo</label><input type="color" id="txtBgCol" value="#000000"></div>
-              <div><label>Opacidad %</label><input type="number" id="txtBgOp" min="0" max="100" value="60"></div>
-            </div>
-            <label style="margin-top:4px">Fondo transparente</label>
-            <input type="color" id="txtCol" value="#ffffff">
-            <div class="check-row" style="margin-top:4px">
-              <label><input type="checkbox" id="txtBold"> Negrita</label>
-              <label><input type="checkbox" id="txtItalic"> Cursiva</label>
-            </div>
-            <button class="btn primary" id="addTxt" style="margin-top:6px">Agregar texto</button>
+          <div>
+            <label>Opacidad del fondo (%)</label>
+            <input type="number" id="txtBgOp" min="0" max="100" value="60">
           </div>
-        </section>
-        <section class="card" id="edit-section" style="display:none;margin-top:6px">
-          <h2>Editar <span id="ed-name"></span></h2>
-          <div style="padding:6px 8px">
+          <div class="check-row" style="margin-top:8px">
+            <label><input type="checkbox" id="txtBold"> Negrita</label>
+            <label><input type="checkbox" id="txtItalic"> Cursiva</label>
+          </div>
+          <button class="btn primary" id="addTxt" style="margin-top:8px">&#10010; Agregar texto</button>
+        </div>
+
+        <!-- Edit Section -->
+        <section class="card" id="edit-section" style="display:none">
+          <h2>&#9998; Editar: <span id="ed-name"></span></h2>
+          <div style="padding:8px 12px">
             <div id="edit-media-fields"></div>
             <div id="edit-text-fields"></div>
-            <div class="edit-group" style="margin-top:4px">
-              <label>Opacidad</label>
-              <div style="display:flex;align-items:center;gap:6px">
+
+            <div class="edit-group">
+              <label>Opacidad general</label>
+              <div style="display:flex;align-items:center;gap:8px">
                 <input type="range" id="ed-opacity" min="0" max="100" value="100" style="flex:1">
-                <span id="ed-opacity-val" style="font-size:10px;width:28px;text-align:right">100</span>
+                <span id="ed-opacity-val" style="font-size:12px;width:32px;text-align:right;font-weight:600">100</span>
               </div>
             </div>
-            <div class="grid2" style="margin-top:4px">
-              <div class="edit-group"><label>Left</label><input type="number" id="ed-x" min="0" max="1" step="0.01"></div>
-              <div class="edit-group"><label>Top</label><input type="number" id="ed-y" min="0" max="1" step="0.01"></div>
+
+            <div class="grid2">
+              <div class="edit-group">
+                <label>Posicion X</label>
+                <input type="number" id="ed-x" min="0" max="1" step="0.01">
+              </div>
+              <div class="edit-group">
+                <label>Posicion Y</label>
+                <input type="number" id="ed-y" min="0" max="1" step="0.01">
+              </div>
             </div>
             <div class="grid2">
-              <div class="edit-group"><label>Ancho</label><input type="number" id="ed-w" min="0.01" max="1" step="0.01"></div>
-              <div class="edit-group"><label>Alto</label><input type="number" id="ed-h" min="0.01" max="1" step="0.01"></div>
+              <div class="edit-group">
+                <label>Ancho</label>
+                <input type="number" id="ed-w" min="0.02" max="1" step="0.01">
+              </div>
+              <div class="edit-group">
+                <label>Alto</label>
+                <input type="number" id="ed-h" min="0.02" max="1" step="0.01">
+              </div>
             </div>
-            <div style="margin-top:6px">
-              <button class="btn danger" id="ed-del">Eliminar esta capa</button>
-            </div>
+
+            <button class="btn danger" id="ed-del" style="margin-top:8px">&#128465; Eliminar esta capa</button>
           </div>
         </section>
       </div>
+
+      <!-- Source list -->
       <div class="source-list" id="source-list">
-        <h2>Fuentes (<span id="count">0</span>)</h2>
+        <h2>&#127912; Fuentes (<span id="count">0</span>)</h2>
         <div id="list"></div>
-        <div class="empty" id="empty-msg">Sin capas. Agrega algo.</div>
+        <div class="empty" id="empty-msg">&#128196; Sin capas. Agrega algo desde arriba.</div>
       </div>
+
+      <!-- Toolbar -->
       <div class="toolbar">
-        <button id="tb-add" title="Agregar fuente">+</button>
-        <button id="tb-del" title="Eliminar fuente" class="danger">&#x2715;</button>
-        <button id="tb-up" title="Subir capa">&#x25B2;</button>
-        <button id="tb-down" title="Bajar capa">&#x25BC;</button>
+        <button id="tb-add" title="Agregar fuente">&#10010;</button>
+        <button id="tb-del" title="Eliminar seleccionada" class="danger">&#128465;</button>
+        <button id="tb-up" title="Subir capa (adelante)">&#9650;</button>
+        <button id="tb-down" title="Bajar capa (atras)">&#9660;</button>
       </div>
     </aside>
+
     <main>
       <div style="width:100%;text-align:center">
         <div class="canvas-wrap">
           <div id="canvas"></div>
         </div>
-        <div class="canvas-note">Vista previa 16:9 | OBS usa la proporcion real</div>
+        <div class="canvas-note">Vista previa 16:9 &middot; Arrastra y redimensiona en el canvas</div>
       </div>
     </main>
   </div>
+
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database-compat.js"></script>
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
