@@ -1876,6 +1876,55 @@
           }
         }
       });
+
+    // Canva-style move handle — drag the floating pill to move the element
+    canvas.addEventListener("pointerdown", function(e) {
+      var handle = e.target.closest(".canva-move-handle");
+      if (!handle) return;
+      var elDiv = handle.closest(".el");
+      if (!elDiv) return;
+      var id = elDiv.getAttribute("data-id");
+      if (!id || !state[id] || state[id].locked) return;
+
+      e.stopPropagation();
+      e.preventDefault();
+      handle.setPointerCapture(e.pointerId);
+
+      var r = canvas.getBoundingClientRect();
+      var startX = e.clientX;
+      var startY = e.clientY;
+      var startNx = (POS_MAP[id] && POS_MAP[id].x != null) ? POS_MAP[id].x : (state[id].x || 0);
+      var startNy = (POS_MAP[id] && POS_MAP[id].y != null) ? POS_MAP[id].y : (state[id].y || 0);
+
+      if (id !== selectedId) { selectRow(id); openEdit(id); }
+
+      function onMove(e2) {
+        var dx = (e2.clientX - startX) / r.width;
+        var dy = (e2.clientY - startY) / r.height;
+        var nw = (POS_MAP[id] && POS_MAP[id].w) || (state[id].w || 0.3);
+        var nh = (POS_MAP[id] && POS_MAP[id].h) || (state[id].h || 0.08);
+        var nx = Math.max(0, Math.min(1 - nw, startNx + dx));
+        var ny = Math.max(0, Math.min(1 - nh, startNy + dy));
+        if (!POS_MAP[id]) POS_MAP[id] = {};
+        POS_MAP[id].x = nx;
+        POS_MAP[id].y = ny;
+        elDiv.style.left = (nx * 100) + "%";
+        elDiv.style.top = (ny * 100) + "%";
+        if (editingId === id) syncEdit();
+        fbUpdate(id, { x: nx, y: ny });
+      }
+
+      function onUp() {
+        canvas.removeEventListener("pointermove", onMove);
+        canvas.removeEventListener("pointerup", onUp);
+        if (POS_MAP[id] && roomRef) {
+          roomRef.child(id).update({ x: POS_MAP[id].x, y: POS_MAP[id].y });
+        }
+      }
+
+      canvas.addEventListener("pointermove", onMove);
+      canvas.addEventListener("pointerup", onUp);
+    }, true);
   }
 
   /* === Render Canvas Elements (DOM order strictly matches z-index) === */
@@ -1916,7 +1965,13 @@
     if (el.type === "audio") cls += " is-audio";
     if (el.type === "text") cls += " is-text";
     if (el.locked === true) cls += " locked";
+    var cw = canvas.clientWidth || 640;
+    var ch = canvas.clientHeight || 360;
+    var boxPxW = (el.w || 0.3) * cw;
+    var boxPxH = (el.h || 0.08) * ch;
     if (selectedId === id) cls += " selected";
+    if (boxPxW < 48 || boxPxH < 28) cls += " is-small";
+    if (boxPxW < 26 || boxPxH < 18) cls += " is-tiny";
     d.className = cls;
 
     POS_MAP[id] = { x: el.x, y: el.y, w: el.w, h: el.h };
@@ -2029,6 +2084,7 @@
   function mkDiv(el) {
     var d = document.createElement("div");
     d.innerHTML =
+      '<div class="canva-move-handle" title="Arrastrar para mover capa"><span class="canva-move-icon">&#10021;</span></div>' +
       '<div class="resize-handle resize-nw" title="Redimensionar esquina"></div>' +
       '<div class="resize-handle resize-n" title="Redimensionar arriba"></div>' +
       '<div class="resize-handle resize-ne" title="Redimensionar esquina"></div>' +

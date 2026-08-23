@@ -397,17 +397,16 @@ header h1 {
 }
 
 .dot {
-  width: 9px;
-  height: 9px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: var(--danger);
   transition: background 0.3s;
-  box-shadow: 0 0 6px var(--danger);
+  flex-shrink: 0;
 }
 
 .dot.on {
   background: var(--ok);
-  box-shadow: 0 0 6px var(--ok);
 }
 
 /* Layout - 3 Column Studio */
@@ -1074,20 +1073,19 @@ main {
   aspect-ratio: 16 / 9;
   position: relative;
   margin: 0 auto;
+  /* padding-top gives space for the floating move handle above elements */
+  padding-top: 28px;
+  box-sizing: content-box;
 }
 
 #canvas {
   position: relative;
   width: 100%;
   height: 100%;
-  background: #080a0f;
-  background-image:
-    linear-gradient(rgba(83, 252, 24, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(83, 252, 24, 0.04) 1px, transparent 1px);
-  background-size: 5% 5%;
-  border: 1px solid var(--border);
+  background: #08090d;
+  border: 1px solid #252a36;
   box-sizing: border-box;
-  overflow: hidden;
+  overflow: visible;
   border-radius: 2px;
 }
 
@@ -1152,10 +1150,10 @@ main {
 /* 8 Resize Handles */
 .resize-handle {
   position: absolute;
-  width: 10px;
-  height: 10px;
+  width: 9px;
+  height: 9px;
   background: #ffffff;
-  border: 2px solid var(--accent);
+  border: 1.5px solid var(--accent);
   border-radius: 2px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
   z-index: 1001;
@@ -1186,6 +1184,84 @@ main {
 .resize-s { top: 100%; left: 50%; cursor: ns-resize; }
 .resize-w { top: 50%; left: 0%; cursor: ew-resize; }
 .resize-e { top: 50%; left: 100%; cursor: ew-resize; }
+
+/* When element is small, hide edge handles so only 4 corner handles remain */
+.el.is-small .resize-n,
+.el.is-small .resize-s,
+.el.is-small .resize-e,
+.el.is-small .resize-w {
+  display: none !important;
+}
+
+.el.is-tiny .resize-handle {
+  width: 7px;
+  height: 7px;
+}
+
+/* Canva-style Floating Move Handle */
+.canva-move-handle {
+  position: absolute;
+  top: -24px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 22px;
+  height: 22px;
+  background: #161b22;
+  border: 1.5px solid var(--accent);
+  border-radius: 50%;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  z-index: 1005;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+  pointer-events: auto;
+  user-select: none;
+  transition: transform 0.1s, background 0.1s;
+}
+
+.canva-move-handle::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  width: 1.5px;
+  height: 6px;
+  background: var(--accent);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.canva-move-handle:hover {
+  background: var(--accent);
+  transform: translateX(-50%) scale(1.15);
+}
+
+.canva-move-handle:hover .canva-move-icon {
+  color: #000;
+}
+
+.canva-move-handle:active {
+  cursor: grabbing;
+  transform: translateX(-50%) scale(1.1);
+  background: var(--accent);
+}
+
+.canva-move-handle:active .canva-move-icon {
+  color: #000;
+}
+
+.canva-move-icon {
+  font-size: 11px;
+  color: var(--accent);
+  line-height: 1;
+  font-weight: bold;
+  pointer-events: none;
+}
+
+.el.selected .canva-move-handle {
+  display: flex;
+}
 
 /* Canvas Top Ribbon */
 .canvas-top-bar {
