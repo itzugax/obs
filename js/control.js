@@ -485,25 +485,46 @@
       return true;
     }
 
+    function restoreDiscordSession() {
+      var savedToken = localStorage.getItem("ugax_discord_token");
+      if (!savedToken) return false;
+      fetch("https://discord.com/api/users/@me", {
+        headers: { "Authorization": "Bearer " + savedToken }
+      }).then(function(res) {
+        if (!res.ok) throw new Error("Token expired");
+        return res.json();
+      }).then(function(data) {
+        if (data && data.id) {
+          var avatarUrl = data.avatar
+            ? "https://cdn.discordapp.com/avatars/" + data.id + "/" + data.avatar + ".png?size=128"
+            : "https://api.dicebear.com/7.x/bottts/svg?seed=" + encodeURIComponent(data.username || "discord");
+          _currentUser.uid = "discord-" + data.id;
+          _currentUser.name = (data.global_name || data.username || "streamer").toLowerCase().replace(/[^a-z0-9_.-]/g, "");
+          _currentUser.photoURL = avatarUrl;
+          _currentUser.provider = "Discord";
+          showProfile();
+        }
+      }).catch(function(e) {
+        localStorage.removeItem("ugax_discord_token");
+      });
+      return true;
+    }
+
     // Listen for Real Firebase Auth State changes (Google) + Discord callback
     var discordHandled = checkDiscordCallback();
     if (!discordHandled) {
+      var discordRestored = restoreDiscordSession();
       try {
         ensureFirebase();
         firebase.auth().onAuthStateChanged(function(user) {
           if (user) {
             handleAuthSuccess(user, "Google");
-          } else if (localStorage.getItem("ugax_user_photo")) {
-            _currentUser.name = localStorage.getItem("ugax_user") || "streamer";
-            _currentUser.photoURL = localStorage.getItem("ugax_user_photo") || "";
-            _currentUser.provider = localStorage.getItem("ugax_user_provider") || "Verificado";
-            showProfile();
-          } else {
+          } else if (!discordRestored) {
             showProfile();
           }
         });
       } catch(e) {
-        showProfile();
+        if (!discordRestored) showProfile();
       }
     }
   }
