@@ -12,30 +12,36 @@
   <div id="lobby-screen" class="lobby-container">
     <div class="lobby-card">
       <div class="lobby-logo">
-        <span class="kick-dot"></span>
-        <h2>CONTROL <span class="kick-green">UGAX</span></h2>
+        <h2>UGAX <span class="kick-green">STUDIO</span></h2>
       </div>
-      <p class="lobby-desc">Panel de moderación y control de overlays en vivo para OBS Studio.</p>
+      <p class="lobby-desc">Panel de moderación de overlays para OBS Studio.</p>
 
       <form id="lobby-form" onsubmit="return false;">
         <div class="lobby-group">
-          <label>👤 Tu Apodo de Moderador</label>
-          <input type="text" id="lobby-user" placeholder="ej: itzugax" required autofocus>
+          <label>Nickname</label>
+          <input type="text" id="lobby-user" placeholder="ej: itzugax" required autofocus autocomplete="off">
         </div>
 
         <div class="lobby-group">
-          <label>📡 Nombre del Canal / Sala</label>
-          <input type="text" id="lobby-room" placeholder="ej: canal-demo" required>
-          <span class="lobby-hint">Debe ser el mismo nombre que uses en tu Browser Source de OBS</span>
+          <label>Código de Sala (6 dígitos)</label>
+          <div class="room-code-row" id="room-code-row">
+            <input class="room-digit" type="text" inputmode="numeric" maxlength="1" pattern="[0-9]" required>
+            <input class="room-digit" type="text" inputmode="numeric" maxlength="1" pattern="[0-9]" required>
+            <input class="room-digit" type="text" inputmode="numeric" maxlength="1" pattern="[0-9]" required>
+            <input class="room-digit" type="text" inputmode="numeric" maxlength="1" pattern="[0-9]" required>
+            <input class="room-digit" type="text" inputmode="numeric" maxlength="1" pattern="[0-9]" required>
+            <input class="room-digit" type="text" inputmode="numeric" maxlength="1" pattern="[0-9]" required>
+          </div>
+          <span class="lobby-hint">El mismo código que use quien controla el OBS</span>
         </div>
 
         <div class="lobby-group">
-          <label>🔒 PIN de Seguridad de la Sala</label>
-          <input type="password" id="lobby-pin" placeholder="ej: 1234" maxlength="12" required>
-          <span class="lobby-hint">Si la sala es nueva, este PIN será su clave de acceso</span>
+          <label>PIN de Acceso</label>
+          <input type="password" id="lobby-pin" placeholder="Crea o ingresa el PIN de la sala" maxlength="12" required autocomplete="off">
+          <span class="lobby-hint">Si la sala es nueva, este PIN queda guardado como clave</span>
         </div>
 
-        <button type="submit" class="btn-kick-primary" id="btn-enter-room">⚡ ENTRAR AL PANEL</button>
+        <button type="submit" class="btn-kick-primary" id="btn-enter-room">ENTRAR</button>
       </form>
     </div>
   </div>

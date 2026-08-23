@@ -32,31 +32,98 @@
     var form = document.getElementById("lobby-form");
     var btnEnter = document.getElementById("btn-enter-room");
     var inUser = document.getElementById("lobby-user");
-    var inRoom = document.getElementById("lobby-room");
     var inPin = document.getElementById("lobby-pin");
+    var digits = Array.from(document.querySelectorAll(".room-digit"));
 
-    // Pre-fill last used values if any
-    if (inUser) inUser.value = localStorage.getItem("ugax_user") || "";
-    if (inRoom) inRoom.value = new URLSearchParams(window.location.search).get("room") || localStorage.getItem("ugax_last_room") || "";
-
-    // Add error element to lobby card
+    // Add error element
     var lobbyCard = document.querySelector(".lobby-card");
     var errEl = document.createElement("p");
     errEl.className = "lobby-error";
-    if (lobbyCard && btnEnter) lobbyCard.insertBefore(errEl, btnEnter.nextSibling);
+    if (lobbyCard && btnEnter) lobbyCard.appendChild(errEl);
 
+    // Pre-fill nickname
+    if (inUser) inUser.value = localStorage.getItem("ugax_user") || "";
+
+    // Pre-fill room code from last session or URL
+    var lastRoom = new URLSearchParams(window.location.search).get("room") || localStorage.getItem("ugax_last_room") || "";
+    if (/^\d{6}$/.test(lastRoom) && digits.length === 6) {
+      lastRoom.split("").forEach(function(d, i) { digits[i].value = d; });
+    }
+
+    // === Digit box keyboard navigation ===
+    digits.forEach(function(box, idx) {
+      box.addEventListener("keydown", function(e) {
+        if (e.key === "Backspace") {
+          if (box.value === "" && idx > 0) {
+            digits[idx - 1].value = "";
+            digits[idx - 1].focus();
+          } else {
+            box.value = "";
+          }
+          e.preventDefault();
+        } else if (e.key === "ArrowLeft" && idx > 0) {
+          digits[idx - 1].focus();
+        } else if (e.key === "ArrowRight" && idx < 5) {
+          digits[idx + 1].focus();
+        } else if (e.key === "Enter") {
+          attemptEnter();
+        }
+      });
+
+      box.addEventListener("input", function() {
+        // Only accept digits
+        var v = box.value.replace(/[^0-9]/g, "");
+        if (v.length > 1) {
+          // Handle paste of multiple digits spread across boxes
+          var chars = v.split("");
+          chars.forEach(function(c, offset) {
+            if (digits[idx + offset]) digits[idx + offset].value = c;
+          });
+          var next = Math.min(idx + chars.length, 5);
+          digits[next].focus();
+        } else {
+          box.value = v;
+          if (v && idx < 5) digits[idx + 1].focus();
+        }
+      });
+
+      // Handle paste on any digit
+      box.addEventListener("paste", function(e) {
+        e.preventDefault();
+        var pasted = (e.clipboardData || window.clipboardData).getData("text").replace(/[^0-9]/g, "");
+        pasted.split("").forEach(function(c, offset) {
+          if (digits[idx + offset]) digits[idx + offset].value = c;
+        });
+        var next = Math.min(idx + pasted.length, 5);
+        digits[next].focus();
+      });
+
+      // Select all on focus
+      box.addEventListener("focus", function() { box.select(); });
+    });
+
+    // Focus first empty digit on load
+    if (digits.length) {
+      var firstEmpty = digits.find(function(d) { return !d.value; }) || digits[0];
+      // Slight delay to not fight autofocus on user field
+      setTimeout(function() {}, 100);
+    }
+
+    // === Submit ===
     function attemptEnter() {
-      var username = (inUser ? inUser.value.trim() : "").toLowerCase().replace(/[^a-z0-9_-]/g, "");
-      var room = (inRoom ? inRoom.value.trim() : "").replace(/\s+/g, "-").toLowerCase();
+      var username = (inUser ? inUser.value.trim() : "").toLowerCase().replace(/[^a-z0-9_.-]/g, "");
+      var roomCode = digits.map(function(d) { return d.value; }).join("");
       var pin = (inPin ? inPin.value.trim() : "");
 
-      if (!username || !room || !pin) {
-        errEl.textContent = "Rellena todos los campos papu";
-        return;
-      }
+      if (!username) { errEl.textContent = "Pon tu nickname papu"; if (inUser) inUser.focus(); return; }
+      if (roomCode.length !== 6 || /[^0-9]/.test(roomCode)) { errEl.textContent = "El código de sala son 6 dígitos exactos"; digits[0].focus(); return; }
+      if (!pin) { errEl.textContent = "Pon el PIN de la sala"; if (inPin) inPin.focus(); return; }
 
-      // Show loading
-      if (btnEnter) btnEnter.textContent = "Verificando...";
+      // Room ID is the 6-digit code
+      var room = "sala-" + roomCode;
+
+      btnEnter.textContent = "Verificando...";
+      btnEnter.disabled = true;
       errEl.textContent = "";
 
       // Check/set PIN via Firebase
@@ -64,32 +131,32 @@
       pinRef.once("value", function(snap) {
         var storedPin = snap.val();
         if (!storedPin) {
-          // Room is new — save the PIN as the master
+          // Room is new — save PIN as master
           pinRef.set(pin, function(err) {
-            if (err) { errEl.textContent = "Error al guardar el PIN en Firebase"; if (btnEnter) btnEnter.textContent = "⚡ ENTRAR AL PANEL"; return; }
+            if (err) {
+              errEl.textContent = "Error al guardar el PIN en Firebase";
+              btnEnter.textContent = "ENTRAR"; btnEnter.disabled = false;
+              return;
+            }
             localStorage.setItem("ugax_user", username);
-            localStorage.setItem("ugax_last_room", room);
-            localStorage.setItem("ugax_pin_" + room, pin);
+            localStorage.setItem("ugax_last_room", roomCode);
             launchApp(username, room);
           });
         } else if (storedPin === pin) {
-          // PIN matches
           localStorage.setItem("ugax_user", username);
-          localStorage.setItem("ugax_last_room", room);
-          localStorage.setItem("ugax_pin_" + room, pin);
+          localStorage.setItem("ugax_last_room", roomCode);
           launchApp(username, room);
         } else {
-          errEl.textContent = "❌ PIN incorrecto, intenta de nuevo";
-          if (btnEnter) btnEnter.textContent = "⚡ ENTRAR AL PANEL";
+          errEl.textContent = "❌ PIN incorrecto";
+          btnEnter.textContent = "ENTRAR"; btnEnter.disabled = false;
           if (inPin) { inPin.value = ""; inPin.focus(); }
         }
       }, function() {
-        // Firebase not ready yet — allow entry with local session
-        errEl.textContent = "⚠️ Sin Firebase, entrando con sesión local...";
+        errEl.textContent = "⚠️ Sin conexión a Firebase, entrando localmente...";
         setTimeout(function() {
           localStorage.setItem("ugax_user", username);
-          localStorage.setItem("ugax_last_room", room);
-          launchApp(username, room);
+          localStorage.setItem("ugax_last_room", roomCode);
+          launchApp(username, "sala-" + roomCode);
         }, 1200);
       });
     }
@@ -99,7 +166,6 @@
 
     function launchApp(username, room) {
       streamId = room;
-      // Hide lobby, show app
       if (lobbyScreen) lobbyScreen.style.display = "none";
       if (appWrapper) appWrapper.style.display = "flex";
       initApp(username);
