@@ -623,54 +623,87 @@
             var cr = canvas.getBoundingClientRect();
             if (cr.width <= 0 || cr.height <= 0) return;
 
-            var dx = (e.clientX - _startState.clientX) / cr.width;
-            var dy = (e.clientY - _startState.clientY) / cr.height;
+            var initW = _startState.w;
+            var initH = _startState.h;
+            var dxPx = e.clientX - _startState.clientX;
+            var dyPx = e.clientY - _startState.clientY;
 
-            var aspect = _startState.aspect || (0.3 / 0.08);
-            var minW = 0.03;
-            var minH = minW / aspect;
-
+            var scaleFactor = 1;
             var x = _startState.x;
             var y = _startState.y;
-            var w = _startState.w;
-            var h = _startState.h;
 
-            // LOCKED PROPORTIONAL RESIZE FOR ANY HANDLE (Never distorts or gets thin/thick)
+            // Compute scale factor based on handle pulled
             if (e.edges.right && e.edges.bottom) { // SE
-              var d = (Math.abs(dx) > Math.abs(dy)) ? dx : (dy * aspect);
-              w = Math.max(minW, Math.min(1 - _startState.x, (1 - _startState.y) * aspect, _startState.w + d));
-              h = w / aspect;
+              var sx = dxPx / (initW * cr.width);
+              var sy = dyPx / (initH * cr.height);
+              scaleFactor = 1 + (Math.abs(sx) > Math.abs(sy) ? sx : sy);
+              scaleFactor = Math.max(0.05, scaleFactor);
+              if (_startState.x + initW * scaleFactor > 1) scaleFactor = (1 - _startState.x) / initW;
+              if (_startState.y + initH * scaleFactor > 1) scaleFactor = Math.min(scaleFactor, (1 - _startState.y) / initH);
+              x = _startState.x;
+              y = _startState.y;
+
             } else if (e.edges.left && e.edges.bottom) { // SW
-              var d = (Math.abs(dx) > Math.abs(dy)) ? -dx : (dy * aspect);
-              w = Math.max(minW, Math.min(_startState.right, (1 - _startState.y) * aspect, _startState.w + d));
-              h = w / aspect;
-              x = _startState.right - w;
+              var sx = -dxPx / (initW * cr.width);
+              var sy = dyPx / (initH * cr.height);
+              scaleFactor = 1 + (Math.abs(sx) > Math.abs(sy) ? sx : sy);
+              scaleFactor = Math.max(0.05, scaleFactor);
+              if (_startState.right - initW * scaleFactor < 0) scaleFactor = _startState.right / initW;
+              if (_startState.y + initH * scaleFactor > 1) scaleFactor = Math.min(scaleFactor, (1 - _startState.y) / initH);
+              x = _startState.right - initW * scaleFactor;
+              y = _startState.y;
+
             } else if (e.edges.right && e.edges.top) { // NE
-              var d = (Math.abs(dx) > Math.abs(dy)) ? dx : (-dy * aspect);
-              w = Math.max(minW, Math.min(1 - _startState.x, _startState.bottom * aspect, _startState.w + d));
-              h = w / aspect;
-              y = _startState.bottom - h;
+              var sx = dxPx / (initW * cr.width);
+              var sy = -dyPx / (initH * cr.height);
+              scaleFactor = 1 + (Math.abs(sx) > Math.abs(sy) ? sx : sy);
+              scaleFactor = Math.max(0.05, scaleFactor);
+              if (_startState.x + initW * scaleFactor > 1) scaleFactor = (1 - _startState.x) / initW;
+              if (_startState.bottom - initH * scaleFactor < 0) scaleFactor = Math.min(scaleFactor, _startState.bottom / initH);
+              x = _startState.x;
+              y = _startState.bottom - initH * scaleFactor;
+
             } else if (e.edges.left && e.edges.top) { // NW
-              var d = (Math.abs(dx) > Math.abs(dy)) ? -dx : (-dy * aspect);
-              w = Math.max(minW, Math.min(_startState.right, _startState.bottom * aspect, _startState.w + d));
-              h = w / aspect;
-              x = _startState.right - w;
-              y = _startState.bottom - h;
+              var sx = -dxPx / (initW * cr.width);
+              var sy = -dyPx / (initH * cr.height);
+              scaleFactor = 1 + (Math.abs(sx) > Math.abs(sy) ? sx : sy);
+              scaleFactor = Math.max(0.05, scaleFactor);
+              if (_startState.right - initW * scaleFactor < 0) scaleFactor = _startState.right / initW;
+              if (_startState.bottom - initH * scaleFactor < 0) scaleFactor = Math.min(scaleFactor, _startState.bottom / initH);
+              x = _startState.right - initW * scaleFactor;
+              y = _startState.bottom - initH * scaleFactor;
+
             } else if (e.edges.right) { // E
-              w = Math.max(minW, Math.min(1 - _startState.x, (1 - _startState.y) * aspect, _startState.w + dx));
-              h = w / aspect;
+              scaleFactor = Math.max(0.05, 1 + (dxPx / (initW * cr.width)));
+              if (_startState.x + initW * scaleFactor > 1) scaleFactor = (1 - _startState.x) / initW;
+              if (_startState.y + initH * scaleFactor > 1) scaleFactor = Math.min(scaleFactor, (1 - _startState.y) / initH);
+              x = _startState.x;
+              y = _startState.y;
+
             } else if (e.edges.left) { // W
-              w = Math.max(minW, Math.min(_startState.right, (1 - _startState.y) * aspect, _startState.w - dx));
-              h = w / aspect;
-              x = _startState.right - w;
+              scaleFactor = Math.max(0.05, 1 - (dxPx / (initW * cr.width)));
+              if (_startState.right - initW * scaleFactor < 0) scaleFactor = _startState.right / initW;
+              if (_startState.y + initH * scaleFactor > 1) scaleFactor = Math.min(scaleFactor, (1 - _startState.y) / initH);
+              x = _startState.right - initW * scaleFactor;
+              y = _startState.y;
+
             } else if (e.edges.bottom) { // S
-              h = Math.max(minH, Math.min(1 - _startState.y, (1 - _startState.x) / aspect, _startState.h + dy));
-              w = h * aspect;
+              scaleFactor = Math.max(0.05, 1 + (dyPx / (initH * cr.height)));
+              if (_startState.y + initH * scaleFactor > 1) scaleFactor = (1 - _startState.y) / initH;
+              if (_startState.x + initW * scaleFactor > 1) scaleFactor = Math.min(scaleFactor, (1 - _startState.x) / initW);
+              x = _startState.x;
+              y = _startState.y;
+
             } else if (e.edges.top) { // N
-              h = Math.max(minH, Math.min(_startState.bottom, (1 - _startState.x) / aspect, _startState.h - dy));
-              w = h * aspect;
-              y = _startState.bottom - h;
+              scaleFactor = Math.max(0.05, 1 - (dyPx / (initH * cr.height)));
+              if (_startState.bottom - initH * scaleFactor < 0) scaleFactor = _startState.bottom / initH;
+              if (_startState.x + initW * scaleFactor > 1) scaleFactor = Math.min(scaleFactor, (1 - _startState.x) / initW);
+              x = _startState.x;
+              y = _startState.bottom - initH * scaleFactor;
             }
+
+            var w = initW * scaleFactor;
+            var h = initH * scaleFactor;
 
             POS_MAP[id] = { x: x, y: y, w: w, h: h };
             e.target.style.left = (x * 100) + "%";
