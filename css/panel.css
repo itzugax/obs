@@ -604,13 +604,14 @@ main {
   height: 100%;
   position: relative;
   outline: 2px dashed rgba(59, 130, 246, 0.6);
-  cursor: move;
   overflow: hidden;
   border-radius: 2px;
   transition: outline-color 0.15s;
+  pointer-events: none;
 }
 
-.media-wrap:hover {
+.el:hover .media-wrap,
+.el.selected .media-wrap {
   outline-color: var(--accent);
 }
 
@@ -644,28 +645,28 @@ main {
 }
 
 .resize-top {
-  top: 0; left: 10px; right: 10px; height: 8px;
+  top: 0; left: 0; right: 0; height: 12px;
   cursor: ns-resize;
   background: var(--accent);
   border-radius: 3px 3px 0 0;
 }
 
 .resize-bottom {
-  bottom: 0; left: 10px; right: 10px; height: 8px;
+  bottom: 0; left: 0; right: 0; height: 12px;
   cursor: ns-resize;
   background: var(--accent);
   border-radius: 0 0 3px 3px;
 }
 
 .resize-left {
-  left: 0; top: 10px; bottom: 10px; width: 8px;
+  left: 0; top: 0; bottom: 0; width: 12px;
   cursor: ew-resize;
   background: var(--accent);
   border-radius: 3px 0 0 3px;
 }
 
 .resize-right {
-  right: 0; top: 10px; bottom: 10px; width: 8px;
+  right: 0; top: 0; bottom: 0; width: 12px;
   cursor: ew-resize;
   background: var(--accent);
   border-radius: 0 3px 3px 0;
