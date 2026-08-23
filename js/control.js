@@ -1082,32 +1082,32 @@
     });
   }
 
-  /* Helper to calculate exact tight text bounding box with zero excess padding */
+  /* Calculate exact tight text bounding box.
+     el.fontSize is the "logical" font size in 1080p px units.
+     updateTextSize renders: dynFs = el.fontSize * (ch/1080) → same ratio as this. */
   function calcTightTextBounds(txt, fontFamily, fontSize) {
     var text = txt || "Texto";
-    var fSize = fontSize || 56;
+    var fSize = fontSize || 56;  // this IS the logical px size at 1080p
     var fFam = fontFamily || "'Montserrat', sans-serif";
     var cvs = document.createElement("canvas");
     var ctx = cvs.getContext("2d");
     ctx.font = "bold " + fSize + "px " + fFam;
-    var metrics = ctx.measureText(text);
+    var m = ctx.measureText(text);
 
-    var pxW = metrics.width;
-    var pxH = fSize * 0.82;
-    if (metrics.actualBoundingBoxAscent && metrics.actualBoundingBoxDescent) {
-      pxH = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
+    var pxW = m.width;
+    var pxH = fSize * 0.75;
+    if (m.actualBoundingBoxAscent !== undefined && m.actualBoundingBoxDescent !== undefined) {
+      pxH = m.actualBoundingBoxAscent + m.actualBoundingBoxDescent;
     }
-    // Add minimal 2px buffer
-    pxW += 4;
-    pxH += 4;
 
-    var normW = pxW / 1920;
-    var normH = pxH / 1080;
+    // Normalize to 1920×1080 stream coordinates
+    // Width: exact glyph width + 2px breathing room
+    // Height: exact glyph height + 2px breathing room
+    var normW = (pxW + 2) / 1920;
+    var normH = (pxH + 2) / 1080;
     return {
-      w: parseFloat(Math.max(0.015, Math.min(0.98, normW)).toFixed(4)),
-      h: parseFloat(Math.max(0.015, Math.min(0.98, normH)).toFixed(4)),
-      pxW: pxW,
-      pxH: pxH
+      w: parseFloat(Math.max(0.01, Math.min(0.98, normW)).toFixed(4)),
+      h: parseFloat(Math.max(0.01, Math.min(0.98, normH)).toFixed(4))
     };
   }
 
@@ -2059,22 +2059,22 @@
     var wrap = elDom.querySelector(".media-wrap");
     if (!wrap) return;
     var ch = canvas.clientHeight || 360;
-    var boxH = (hVal != null ? hVal : (elData.h || 0.08)) * ch;
-    var dynFs = boxH * 0.88;
+    // Scale the stored logical font size (1080p reference) to the preview canvas size
+    var dynFs = Math.max(6, Math.round((elData.fontSize || 56) * (ch / 1080)));
 
-    wrap.style.fontSize = Math.max(8, Math.round(dynFs)) + "px";
+    wrap.style.fontSize = dynFs + "px";
     wrap.style.lineHeight = "1";
     wrap.style.display = "flex";
     wrap.style.alignItems = "center";
     wrap.style.justifyContent = "center";
 
-    // Adaptive stroke & shadow to maintain legibility when small
-    var strokeW = Math.max(0.5, Math.min(dynFs * 0.05, 5));
+    // Adaptive stroke & shadow
+    var strokeW = Math.max(0.4, Math.min(dynFs * 0.05, 5));
     wrap.style.webkitTextStroke = strokeW.toFixed(1) + "px " + (elData.strokeColor || "#000000");
 
-    if (dynFs < 20) {
+    if (dynFs < 16) {
       wrap.style.textShadow = "1px 1px 2px rgba(0,0,0,0.8)";
-    } else if (dynFs < 45) {
+    } else if (dynFs < 40) {
       wrap.style.textShadow = "2px 2px 4px rgba(0,0,0,0.85)";
     } else {
       wrap.style.textShadow = "3px 3px 6px rgba(0,0,0,0.9)";

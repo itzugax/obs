@@ -186,18 +186,18 @@
       w.style.fontFamily = el.fontFamily || "'Montserrat', sans-serif";
       w.style.paintOrder = "stroke fill";
 
-      var boxH = (el.h || 0.08) * 1080;
-      var dynFs = boxH * 0.88;
+      // Use stored logical font size directly (it's already in 1080p px units)
+      var dynFs = Math.max(6, el.fontSize || 56);
 
-      w.style.fontSize = Math.max(8, Math.round(dynFs)) + "px";
+      w.style.fontSize = dynFs + "px";
 
-      // Adaptive stroke & shadow to maintain legibility when small
-      var strokeW = Math.max(0.5, Math.min(dynFs * 0.05, 5));
+      // Adaptive stroke & shadow
+      var strokeW = Math.max(0.4, Math.min(dynFs * 0.05, 5));
       w.style.webkitTextStroke = strokeW.toFixed(1) + "px " + (el.strokeColor || "#000000");
 
-      if (dynFs < 20) {
+      if (dynFs < 16) {
         w.style.textShadow = "1px 1px 2px rgba(0,0,0,0.8)";
-      } else if (dynFs < 45) {
+      } else if (dynFs < 40) {
         w.style.textShadow = "2px 2px 4px rgba(0,0,0,0.85)";
       } else {
         w.style.textShadow = "3px 3px 6px rgba(0,0,0,0.9)";

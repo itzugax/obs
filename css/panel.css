@@ -1073,9 +1073,6 @@ main {
   aspect-ratio: 16 / 9;
   position: relative;
   margin: 0 auto;
-  /* padding-top gives space for the floating move handle above elements */
-  padding-top: 28px;
-  box-sizing: content-box;
 }
 
 #canvas {
