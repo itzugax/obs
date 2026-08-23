@@ -17,7 +17,7 @@
 <div class="layout">
   <aside>
     <!-- Tabs: URL / Subir / Texto -->
-    <section class="card">
+    <section class="card" id="add-section">
       <h2>Agregar elemento</h2>
       <div class="tabs">
         <button class="tab active" data-tab="url">URL</button>
@@ -84,6 +84,58 @@
           <label><input type="checkbox" id="text-italic"> Cursiva</label>
         </div>
         <button id="add-text" class="btn primary">Agregar texto</button>
+      </div>
+    </section>
+
+    <!-- Editar elemento (oculto por defecto) -->
+    <section class="card" id="edit-section" style="display:none">
+      <h2>Editar elemento</h2>
+      <div id="edit-url-fields" style="display:none">
+        <label for="edit-url-input">URL del archivo</label>
+        <input type="url" id="edit-url-input" placeholder="https://...">
+      </div>
+      <div id="edit-text-fields" style="display:none">
+        <label for="edit-text-input">Texto</label>
+        <input type="text" id="edit-text-input" placeholder="Texto...">
+        <div class="inline-row">
+          <div class="field">
+            <label>Tamano</label>
+            <input type="number" id="edit-text-size" value="48" min="8" max="200">
+          </div>
+          <div class="field">
+            <label>Fuente</label>
+            <select id="edit-text-font">
+              <option value="Arial, sans-serif">Arial</option>
+              <option value="Impact, sans-serif">Impact</option>
+              <option value="Georgia, serif">Georgia</option>
+              <option value="Courier New, monospace">Courier</option>
+              <option value="Verdana, sans-serif">Verdana</option>
+              <option value="Comic Sans MS, cursive">Comic Sans</option>
+            </select>
+          </div>
+        </div>
+        <div class="inline-row">
+          <div class="field">
+            <label>Color texto</label>
+            <input type="color" id="edit-text-color" value="#ffffff">
+          </div>
+          <div class="field">
+            <label>Color fondo</label>
+            <input type="color" id="edit-text-bg" value="#000000">
+          </div>
+          <div class="field">
+            <label>Opacidad fondo</label>
+            <input type="range" id="edit-text-bg-opacity" min="0" max="100" value="0">
+          </div>
+        </div>
+        <div class="check-row">
+          <label><input type="checkbox" id="edit-text-bold"> Negrita</label>
+          <label><input type="checkbox" id="edit-text-italic"> Cursiva</label>
+        </div>
+      </div>
+      <div class="inline-row">
+        <button id="edit-save" class="btn primary">Guardar</button>
+        <button id="edit-cancel" class="btn">Cancelar</button>
       </div>
     </section>
 

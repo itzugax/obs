@@ -38,6 +38,7 @@ var rows = new Map();
 var dragging = new Set();
 var writeTimers = new Map();
 var zTop = 0;
+var editingId = null;
 
 /* ── Utilidades ── */
 function clamp(v, lo, hi) { return Math.min(hi, Math.max(lo, v)); }
@@ -281,8 +282,9 @@ function renderRow(el) {
 
     row.innerHTML =
       '<span class="icon">' + typeIcon(el.type) + '</span>' +
-      '<span class="name">' + (el.type === "text" ? (el.content || "").slice(0, 18) : nameFromUrl(el.url || "")) + '</span>' +
+      '<span class="name">' + (el.type === "text" ? (el.content || "").slice(0, 14) : nameFromUrl(el.url || "")) + '</span>' +
       (el.type !== "text" ? '<input class="vol" type="range" min="0" max="100" value="' + volVal + '" title="Volumen">' : '') +
+      '<button class="ibtn edit" title="Editar">Edit</button>' +
       '<button class="ibtn eye" title="Visibilidad">' + eyeIcon + '</button>' +
       '<button class="ibtn play" title="Play/Pause">' + playIcon + '</button>' +
       '<button class="ibtn front" title="Traer al frente">Top</button>' +
@@ -308,6 +310,8 @@ function renderRow(el) {
     });
 
     row.querySelector(".front").addEventListener("click", function () { bringToFront(el.id); });
+
+    row.querySelector(".edit").addEventListener("click", function () { startEditing(el.id); });
 
     row.querySelector(".danger").addEventListener("click", function () {
       roomRef.child(el.id).remove();
@@ -481,6 +485,70 @@ showAllBtn.addEventListener("click", function () {
 clearAllBtn.addEventListener("click", function () {
   if (confirm("Eliminar TODOS los elementos?")) roomRef.remove();
 });
+
+/* ================================================================
+ *  Editar elemento existente
+ * ================================================================ */
+var addSection = document.getElementById("add-section");
+var editSection = document.getElementById("edit-section");
+
+function startEditing(id) {
+  var el = state.get(id);
+  if (!el) return;
+  editingId = id;
+  addSection.style.display = "none";
+  editSection.style.display = "";
+
+  if (el.type === "text") {
+    document.getElementById("edit-url-fields").style.display = "none";
+    document.getElementById("edit-text-fields").style.display = "";
+    document.getElementById("edit-text-input").value = el.content || "";
+    document.getElementById("edit-text-size").value = el.fontSize || 48;
+    document.getElementById("edit-text-color").value = el.fontColor || "#ffffff";
+    document.getElementById("edit-text-font").value = el.fontFamily || "Arial, sans-serif";
+    document.getElementById("edit-text-bg").value = el.bgColor || "#000000";
+    document.getElementById("edit-text-bg-opacity").value = el.bgOpacity || 0;
+    document.getElementById("edit-text-bold").checked = el.bold || false;
+    document.getElementById("edit-text-italic").checked = el.italic || false;
+  } else {
+    document.getElementById("edit-text-fields").style.display = "none";
+    document.getElementById("edit-url-fields").style.display = "";
+    document.getElementById("edit-url-input").value = el.url || "";
+  }
+}
+
+function stopEditing() {
+  editingId = null;
+  editSection.style.display = "none";
+  addSection.style.display = "";
+}
+
+document.getElementById("edit-save").addEventListener("click", function () {
+  if (!editingId) return;
+  var el = state.get(editingId);
+  if (!el) { stopEditing(); return; }
+
+  if (el.type === "text") {
+    roomRef.child(editingId).update({
+      content: document.getElementById("edit-text-input").value,
+      fontSize: parseInt(document.getElementById("edit-text-size").value) || 48,
+      fontColor: document.getElementById("edit-text-color").value,
+      fontFamily: document.getElementById("edit-text-font").value,
+      bgColor: document.getElementById("edit-text-bg").value,
+      bgOpacity: parseInt(document.getElementById("edit-text-bg-opacity").value) || 0,
+      bold: document.getElementById("edit-text-bold").checked,
+      italic: document.getElementById("edit-text-italic").checked
+    });
+  } else {
+    var newUrl = document.getElementById("edit-url-input").value.trim();
+    if (newUrl) {
+      roomRef.child(editingId).update({ url: newUrl, type: detectType(newUrl) });
+    }
+  }
+  stopEditing();
+});
+
+document.getElementById("edit-cancel").addEventListener("click", stopEditing);
 
 /* ================================================================
  *  Listener Firebase
