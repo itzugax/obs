@@ -1447,6 +1447,34 @@ main {
   font-weight: 600;
 }
 
+.avatar-presets {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+  justify-content: center;
+}
+
+.preset-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  cursor: pointer;
+  background: var(--surface);
+  transition: all 0.15s;
+}
+
+.preset-avatar:hover {
+  transform: scale(1.1);
+  border-color: var(--kick-green);
+}
+
+.preset-avatar.active {
+  border-color: var(--kick-green);
+  box-shadow: 0 0 8px var(--kick-green);
+  transform: scale(1.1);
+}
+
 .auth-profile-badge {
   display: flex;
   align-items: center;
