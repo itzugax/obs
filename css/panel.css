@@ -1416,6 +1416,21 @@ main {
   border-radius: var(--radius);
 }
 
+.btn-mini-logout {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 18px;
+  margin-left: auto;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.btn-mini-logout:hover {
+  color: var(--danger);
+}
+
 .lobby-pfp-img {
   width: 32px;
   height: 32px;

@@ -16,8 +16,8 @@
   /* Current User Profile */
   var _currentUser = {
     uid: "guest-" + Math.floor(Math.random() * 8999 + 1000),
-    name: localStorage.getItem("ugax_user") || "itzugax",
-    photoURL: localStorage.getItem("ugax_user_photo") || "https://api.dicebear.com/7.x/bottts/svg?seed=" + encodeURIComponent(localStorage.getItem("ugax_user") || "itzugax")
+    name: localStorage.getItem("ugax_user") || "",
+    photoURL: localStorage.getItem("ugax_user_photo") || ""
   };
 
   /* === DOM refs === */
@@ -228,7 +228,8 @@
     var profileBadge = document.getElementById("auth-profile-badge");
     var pfpImg = document.getElementById("lobby-user-pfp");
     var userNameTxt = document.getElementById("lobby-user-name");
-    var grpNick = document.getElementById("group-nickname");
+    var btnLogoutGoogle = document.getElementById("btn-logout-google");
+    var inUser = document.getElementById("lobby-user");
 
     if (btnGoogle) {
       btnGoogle.addEventListener("click", function() {
@@ -241,22 +242,17 @@
             var u = res.user;
             if (u) {
               _currentUser.uid = u.uid;
-              _currentUser.name = (u.displayName || u.email.split("@")[0] || "Streamer").toLowerCase().replace(/[^a-z0-9_.-]/g, "");
+              _currentUser.name = (u.displayName || u.email.split("@")[0] || "streamer").toLowerCase().replace(/[^a-z0-9_.-]/g, "");
               _currentUser.photoURL = u.photoURL || ("https://api.dicebear.com/7.x/bottts/svg?seed=" + encodeURIComponent(_currentUser.name));
 
               localStorage.setItem("ugax_user", _currentUser.name);
               localStorage.setItem("ugax_user_photo", _currentUser.photoURL);
 
-              if (pfpImg) pfpImg.src = _currentUser.photoURL;
-              if (userNameTxt) userNameTxt.textContent = "@" + _currentUser.name;
-              if (btnGoogle) btnGoogle.style.display = "none";
-              if (profileBadge) profileBadge.style.display = "flex";
-              var inUser = document.getElementById("lobby-user");
-              if (inUser) inUser.value = _currentUser.name;
+              showGoogleProfile();
             }
           }).catch(function(err) {
             console.warn("Google login popup warning:", err);
-            alert("No se pudo abrir el popup de Google. Puedes continuar usando tu Nickname normalmente!");
+            alert("No se pudo abrir el popup de Google. Puedes continuar ingresando tu Nickname normalmente!");
           });
         } catch (e) {
           console.error("Google Auth error:", e);
@@ -264,12 +260,34 @@
       });
     }
 
-    // Check if previously logged in with photo
-    if (_currentUser.photoURL && profileBadge && pfpImg && userNameTxt) {
-      pfpImg.src = _currentUser.photoURL;
-      userNameTxt.textContent = "@" + _currentUser.name;
-      if (btnGoogle) btnGoogle.style.display = "none";
-      profileBadge.style.display = "flex";
+    if (btnLogoutGoogle) {
+      btnLogoutGoogle.addEventListener("click", function() {
+        localStorage.removeItem("ugax_user_photo");
+        _currentUser.photoURL = "";
+        if (profileBadge) profileBadge.style.display = "none";
+        if (btnGoogle) btnGoogle.style.display = "flex";
+      });
+    }
+
+    function showGoogleProfile() {
+      if (_currentUser.photoURL && pfpImg && userNameTxt) {
+        pfpImg.src = _currentUser.photoURL;
+        userNameTxt.textContent = "@" + _currentUser.name;
+        if (btnGoogle) btnGoogle.style.display = "none";
+        if (profileBadge) profileBadge.style.display = "flex";
+        if (inUser && !inUser.value) inUser.value = _currentUser.name;
+      } else {
+        if (btnGoogle) btnGoogle.style.display = "flex";
+        if (profileBadge) profileBadge.style.display = "none";
+      }
+    }
+
+    // Only show profile badge if user actually logged in with Google (photoURL present)
+    if (localStorage.getItem("ugax_user_photo")) {
+      showGoogleProfile();
+    } else {
+      if (btnGoogle) btnGoogle.style.display = "flex";
+      if (profileBadge) profileBadge.style.display = "none";
     }
   }
 
