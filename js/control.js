@@ -9,6 +9,7 @@
   var roomRef = null;
   var db = null;
   var _interactingId = null;
+  var _startState = null;
 
   /* === DOM refs === */
   var canvas, listEl, emptyEl, countEl, editSec, edName, dotEl, connTxt;
@@ -35,15 +36,21 @@
     initAddText();
     initFileUpload();
     initToolbar();
+    initCanvasEvents();
+    initKeyboardEvents();
     initServices();
   }
 
   /* === Services (Firebase, Supabase, interact) === */
   function initServices() {
+    var streamId = (typeof STREAM_ID !== "undefined" && STREAM_ID) ? STREAM_ID : "sala-stream-demo";
+    var streamLbl = document.getElementById("stream-label");
+    if (streamLbl) streamLbl.textContent = streamId;
+
     /* Firebase */
     if (typeof firebase !== "undefined") {
       try {
-        firebase.initializeApp({
+        var fbCfg = (typeof firebaseConfig !== "undefined" && firebaseConfig.apiKey) ? firebaseConfig : {
           apiKey: "AIzaSyCWePF8D8Bo9Y0C4Wlt2fH1Ne6rjtefP28",
           authDomain: "obss-1a2ae.firebaseapp.com",
           databaseURL: "https://obss-1a2ae-default-rtdb.firebaseio.com",
@@ -51,9 +58,13 @@
           storageBucket: "obss-1a2ae.firebasestorage.app",
           messagingSenderId: "273738937122",
           appId: "1:273738937122:web:639ec775a5c1ea62bd6b7b"
-        });
+        };
+
+        if (!firebase.apps || !firebase.apps.length) {
+          firebase.initializeApp(fbCfg);
+        }
         db = firebase.database();
-        roomRef = db.ref("streams/sala-stream-demo/elements");
+        roomRef = db.ref("streams/" + streamId + "/elements");
 
         roomRef.on("value", function(snap) {
           state = snap.val() || {};
@@ -77,10 +88,9 @@
     /* Supabase */
     if (typeof window.supabase !== "undefined" && window.supabase.createClient) {
       try {
-        window._supabase = window.supabase.createClient(
-          "https://esccrtvcfssykpmltroz.supabase.co",
-          "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVzY2NydHZjZnNzeWtwbWx0cm96Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg5NDgzMzAsImV4cCI6MjA5NDUyNDMzMH0.3XonC_eNeaSsVC6_EHEPcPvtskt1PV3Gp8VMs_oR5wM"
-        );
+        var suUrl = (typeof supabaseConfig !== "undefined" && supabaseConfig.url) ? supabaseConfig.url : "https://esccrtvcfssykpmltroz.supabase.co";
+        var suKey = (typeof supabaseConfig !== "undefined" && supabaseConfig.anonKey) ? supabaseConfig.anonKey : "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVzY2NydHZjZnNzeWtwbWx0cm96Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg5NDgzMzAsImV4cCI6MjA5NDUyNDMzMH0.3XonC_eNeaSsVC6_EHEPcPvtskt1PV3Gp8VMs_oR5wM";
+        window._supabase = window.supabase.createClient(suUrl, suKey);
       } catch (e) {
         console.warn("Supabase init error:", e);
       }
@@ -122,18 +132,20 @@
       if (!u) { alert("Pega una URL primero"); return; }
       var t = detectType(u);
       if (!t) { alert("No se pudo detectar tipo. Usa JPG, PNG, GIF, MP4, WEBM o MP3."); return; }
-      if (!roomRef) { alert("Sin conexion a Firebase. Recarga la pagina."); return; }
+      if (!roomRef) { alert("Sin conexión a Firebase. Recarga la página."); return; }
       var id = roomRef.push().key;
       var base = {
-        type: t, x: 0.1, y: 0.1, w: 0.30, h: 0.08,
+        type: t, url: u, x: 0.1, y: 0.1, w: 0.35, h: 0.25,
         z: Date.now(), opacity: 100, visible: true,
         name: shortName(u), locked: false
       };
       if (t === "image") base.objectFit = "contain";
-      if (t === "audio") { base.volume = 100; base.loop = false; }
+      if (t === "audio") { base.volume = 100; base.loop = false; base.w = 0.20; base.h = 0.08; }
       if (t === "video") { base.volume = 100; base.loop = false; base.objectFit = "contain"; }
       roomRef.child(id).set(base);
       document.getElementById("urlIn").value = "";
+      selectRow(id);
+      openEdit(id);
     });
   }
 
@@ -144,16 +156,18 @@
     btn.addEventListener("click", function() {
       var txt = document.getElementById("txtIn").value.trim();
       if (!txt) { alert("Escribe algo primero"); return; }
-      if (!roomRef) { alert("Sin conexion a Firebase. Recarga la pagina."); return; }
+      if (!roomRef) { alert("Sin conexión a Firebase. Recarga la página."); return; }
       var id = roomRef.push().key;
       roomRef.child(id).set({
         type: "text",
-        x: 0.1, y: 0.1, w: 0.30, h: 0.08,
+        x: 0.1, y: 0.1, w: 0.40, h: 0.10,
         z: Date.now(), opacity: 100, visible: true,
         name: shortName(txt), locked: false,
-        text: txt
+        text: txt, fontSize: 56
       });
       document.getElementById("txtIn").value = "";
+      selectRow(id);
+      openEdit(id);
     });
   }
 
@@ -183,6 +197,8 @@
 
   function handleFiles(files) {
     var ul = document.getElementById("upload-list");
+    var streamId = (typeof STREAM_ID !== "undefined" && STREAM_ID) ? STREAM_ID : "sala-stream-demo";
+
     for (var i = 0; i < files.length; i++) {
       (function(f) {
         var it = document.createElement("div");
@@ -197,7 +213,7 @@
         }
 
         var ext = f.name.split(".").pop().toLowerCase();
-        var path = "sala-stream-demo/" + Date.now() + "_" + Math.random().toString(36).slice(2, 8) + "." + ext;
+        var path = streamId + "/" + Date.now() + "_" + Math.random().toString(36).slice(2, 8) + "." + ext;
 
         window._supabase.storage.from("wasa").upload(path, f, { cacheControl: "3600", upsert: false })
           .then(function(up) {
@@ -207,16 +223,18 @@
             if (!roomRef) return;
             var id = roomRef.push().key;
             var base = {
-              type: t, x: 0.1, y: 0.1, w: 0.30, h: 0.08,
+              type: t, x: 0.1, y: 0.1, w: 0.35, h: 0.25,
               z: Date.now(), url: pub, name: shortName(f.name),
               opacity: 100, visible: true, locked: false
             };
             if (t === "image") base.objectFit = "contain";
-            if (t === "audio") { base.volume = 100; base.loop = false; }
+            if (t === "audio") { base.volume = 100; base.loop = false; base.w = 0.20; base.h = 0.08; }
             if (t === "video") { base.volume = 100; base.loop = false; base.objectFit = "contain"; }
             roomRef.child(id).set(base);
             it.querySelector("span:last-child").className = "ok";
             it.querySelector("span:last-child").textContent = "Listo";
+            selectRow(id);
+            openEdit(id);
           })
           .catch(function(e) {
             it.querySelector("span:last-child").className = "fail";
@@ -243,7 +261,7 @@
 
     if (tbDel) tbDel.addEventListener("click", function() {
       if (!selectedId) { alert("Selecciona una capa primero"); return; }
-      if (confirm("Eliminar capa seleccionada?")) {
+      if (confirm("¿Eliminar capa seleccionada?")) {
         if (roomRef) roomRef.child(selectedId).remove();
         if (editingId === selectedId) closeEdit();
         selectedId = null;
@@ -283,91 +301,240 @@
     roomRef.child(id).update({ z: mn - 1 });
   }
 
-  /* === interact.js === */
+  /* === Canvas & Keyboard Events === */
+  function initCanvasEvents() {
+    if (!canvas) return;
+    canvas.addEventListener("pointerdown", function(e) {
+      var elNode = e.target.closest(".el");
+      if (elNode) {
+        var id = elNode.getAttribute("data-id");
+        if (id && id !== selectedId) {
+          selectRow(id);
+          openEdit(id);
+        }
+      } else {
+        // Clicked outside elements
+        selectRow(null);
+        closeEdit();
+      }
+    });
+  }
+
+  function initKeyboardEvents() {
+    document.addEventListener("keydown", function(e) {
+      if (e.target.matches("input, textarea, select")) return;
+      if (!selectedId) return;
+
+      if (e.key === "Delete" || e.key === "Backspace") {
+        e.preventDefault();
+        if (confirm("¿Eliminar capa seleccionada?")) {
+          var toDel = selectedId;
+          if (roomRef) roomRef.child(toDel).remove();
+          if (editingId === toDel) closeEdit();
+          selectedId = null;
+        }
+      } else if (e.key === "Escape") {
+        selectRow(null);
+        closeEdit();
+      } else if (e.key.startsWith("Arrow")) {
+        e.preventDefault();
+        var step = e.shiftKey ? 0.02 : 0.005;
+        var cur = POS_MAP[selectedId];
+        if (!cur || !state[selectedId] || state[selectedId].locked) return;
+        var nx = cur.x || 0;
+        var ny = cur.y || 0;
+        var nw = cur.w || 0.3;
+        var nh = cur.h || 0.08;
+
+        if (e.key === "ArrowLeft") nx = Math.max(0, nx - step);
+        if (e.key === "ArrowRight") nx = Math.min(1 - nw, nx + step);
+        if (e.key === "ArrowUp") ny = Math.max(0, ny - step);
+        if (e.key === "ArrowDown") ny = Math.min(1 - nh, ny + step);
+
+        POS_MAP[selectedId].x = nx;
+        POS_MAP[selectedId].y = ny;
+        var cel = canvas.querySelector('[data-id="' + selectedId + '"]');
+        if (cel) {
+          cel.style.left = (nx * 100) + "%";
+          cel.style.top = (ny * 100) + "%";
+        }
+        if (editingId === selectedId) syncEdit();
+        if (roomRef) roomRef.child(selectedId).update({ x: nx, y: ny });
+      }
+    });
+  }
+
+  /* === Firebase Throttled Update === */
   var _wTimers = {};
   function fbUpdate(id, data) {
     if (!roomRef) return;
     clearTimeout(_wTimers[id]);
     _wTimers[id] = setTimeout(function() {
       roomRef.child(id).update(data);
-    }, 30);
+    }, 25);
   }
 
+  /* === interact.js Setup with Anchor-based Resizing === */
   function initInteract() {
-    interact("#canvas .el").draggable({
-      listeners: {
-        start: function(e) {
-          _interactingId = e.target.getAttribute("data-id");
-        },
-        move: function(e) {
-          var id = e.target.getAttribute("data-id");
-          if (!id || !state[id] || state[id].locked) return;
-          var r = canvas.getBoundingClientRect();
-          var dx = e.dx / r.width;
-          var dy = e.dy / r.height;
-          var nx = (POS_MAP[id].x || 0) + dx;
-          var ny = (POS_MAP[id].y || 0) + dy;
-          var nw = POS_MAP[id].w || 0.3;
-          var nh = POS_MAP[id].h || 0.08;
-          nx = Math.max(0, Math.min(1 - nw, nx));
-          ny = Math.max(0, Math.min(1 - nh, ny));
-          POS_MAP[id].x = nx;
-          POS_MAP[id].y = ny;
-          e.target.style.left = (nx * 100) + "%";
-          e.target.style.top = (ny * 100) + "%";
-          fbUpdate(id, { x: nx, y: ny });
-        },
-        end: function(e) {
-          var id = e.target.getAttribute("data-id");
-          _interactingId = null;
-          clearTimeout(_wTimers[id]);
-          if (id && POS_MAP[id] && roomRef) {
-            roomRef.child(id).update({ x: POS_MAP[id].x, y: POS_MAP[id].y });
+    interact("#canvas .el")
+      .draggable({
+        ignoreFrom: ".resize-handle",
+        listeners: {
+          start: function(e) {
+            var id = e.target.getAttribute("data-id");
+            _interactingId = id;
+            if (id && id !== selectedId) {
+              selectRow(id);
+              openEdit(id);
+            }
+          },
+          move: function(e) {
+            var id = e.target.getAttribute("data-id");
+            if (!id || !state[id] || state[id].locked) return;
+            var r = canvas.getBoundingClientRect();
+            if (r.width <= 0 || r.height <= 0) return;
+
+            var dx = e.dx / r.width;
+            var dy = e.dy / r.height;
+            var nw = (POS_MAP[id] && POS_MAP[id].w) || 0.3;
+            var nh = (POS_MAP[id] && POS_MAP[id].h) || 0.08;
+            var nx = ((POS_MAP[id] && POS_MAP[id].x) || 0) + dx;
+            var ny = ((POS_MAP[id] && POS_MAP[id].y) || 0) + dy;
+
+            nx = Math.max(0, Math.min(1 - nw, nx));
+            ny = Math.max(0, Math.min(1 - nh, ny));
+
+            if (!POS_MAP[id]) POS_MAP[id] = {};
+            POS_MAP[id].x = nx;
+            POS_MAP[id].y = ny;
+
+            e.target.style.left = (nx * 100) + "%";
+            e.target.style.top = (ny * 100) + "%";
+            if (editingId === id) syncEdit();
+            fbUpdate(id, { x: nx, y: ny });
+          },
+          end: function(e) {
+            var id = e.target.getAttribute("data-id");
+            _interactingId = null;
+            clearTimeout(_wTimers[id]);
+            if (id && POS_MAP[id] && roomRef) {
+              roomRef.child(id).update({ x: POS_MAP[id].x, y: POS_MAP[id].y });
+            }
           }
         }
-      }
-    }).resizable({
-      edges: { left: ".resize-left", right: ".resize-right", top: ".resize-top", bottom: ".resize-bottom" },
-      listeners: {
-        start: function(e) {
-          _interactingId = e.target.getAttribute("data-id");
+      })
+      .resizable({
+        edges: {
+          top: ".resize-n, .resize-nw, .resize-ne",
+          bottom: ".resize-s, .resize-sw, .resize-se",
+          left: ".resize-w, .resize-nw, .resize-sw",
+          right: ".resize-e, .resize-ne, .resize-se"
         },
-        move: function(e) {
-          var id = e.target.getAttribute("data-id");
-          if (!id || !state[id] || state[id].locked) return;
-          var cr = canvas.getBoundingClientRect();
-          var nx = (e.rect.left - cr.left) / cr.width;
-          var ny = (e.rect.top - cr.top) / cr.height;
-          var nw = Math.max(0.03, e.rect.width / cr.width);
-          var nh = Math.max(0.03, e.rect.height / cr.height);
-          nx = Math.max(0, Math.min(1 - nw, nx));
-          ny = Math.max(0, Math.min(1 - nh, ny));
-          POS_MAP[id] = { x: nx, y: ny, w: nw, h: nh };
-          e.target.style.left = (nx * 100) + "%";
-          e.target.style.top = (ny * 100) + "%";
-          e.target.style.width = (nw * 100) + "%";
-          e.target.style.height = (nh * 100) + "%";
-          e.target.classList.add("resizing");
-          if (editingId === id) syncEdit();
-          fbUpdate(id, { x: nx, y: ny, w: nw, h: nh });
-        },
-        end: function(e) {
-          var id = e.target.getAttribute("data-id");
-          _interactingId = null;
-          e.target.classList.remove("resizing");
-          clearTimeout(_wTimers[id]);
-          if (id && POS_MAP[id] && roomRef) {
-            roomRef.child(id).update({
-              x: POS_MAP[id].x, y: POS_MAP[id].y,
-              w: POS_MAP[id].w, h: POS_MAP[id].h
-            });
+        listeners: {
+          start: function(e) {
+            var id = e.target.getAttribute("data-id");
+            _interactingId = id;
+            if (id && id !== selectedId) {
+              selectRow(id);
+              openEdit(id);
+            }
+            var cur = POS_MAP[id] || { x: 0.1, y: 0.1, w: 0.3, h: 0.08 };
+            _startState = {
+              x: cur.x || 0,
+              y: cur.y || 0,
+              w: cur.w || 0.3,
+              h: cur.h || 0.08,
+              right: (cur.x || 0) + (cur.w || 0.3),
+              bottom: (cur.y || 0) + (cur.h || 0.08),
+              clientX: e.clientX,
+              clientY: e.clientY,
+              aspect: (cur.w || 0.3) / Math.max(0.001, cur.h || 0.08)
+            };
+            e.target.classList.add("resizing");
+          },
+          move: function(e) {
+            var id = e.target.getAttribute("data-id");
+            if (!id || !state[id] || state[id].locked || !_startState) return;
+            var cr = canvas.getBoundingClientRect();
+            if (cr.width <= 0 || cr.height <= 0) return;
+
+            var dx = (e.clientX - _startState.clientX) / cr.width;
+            var dy = (e.clientY - _startState.clientY) / cr.height;
+
+            var minW = 0.02;
+            var minH = 0.02;
+
+            var x = _startState.x;
+            var y = _startState.y;
+            var w = _startState.w;
+            var h = _startState.h;
+
+            /* X & Width calculation */
+            if (e.edges.right) {
+              w = Math.max(minW, Math.min(1 - _startState.x, _startState.w + dx));
+            } else if (e.edges.left) {
+              var newX = Math.max(0, Math.min(_startState.right - minW, _startState.x + dx));
+              w = _startState.right - newX;
+              x = newX;
+            }
+
+            /* Y & Height calculation */
+            if (e.edges.bottom) {
+              h = Math.max(minH, Math.min(1 - _startState.y, _startState.h + dy));
+            } else if (e.edges.top) {
+              var newY = Math.max(0, Math.min(_startState.bottom - minH, _startState.y + dy));
+              h = _startState.bottom - newY;
+              y = newY;
+            }
+
+            /* Proportional Aspect Ratio when Shift is held on corners */
+            var isCorner = (e.edges.left || e.edges.right) && (e.edges.top || e.edges.bottom);
+            if (e.shiftKey && isCorner && _startState.aspect > 0) {
+              var candidateH = w / _startState.aspect;
+              if (e.edges.top && _startState.bottom - candidateH < 0) {
+                candidateH = _startState.bottom;
+                w = candidateH * _startState.aspect;
+              } else if (e.edges.bottom && _startState.y + candidateH > 1) {
+                candidateH = 1 - _startState.y;
+                w = candidateH * _startState.aspect;
+              }
+              h = candidateH;
+              if (e.edges.left) x = _startState.right - w;
+              if (e.edges.top) y = _startState.bottom - h;
+            }
+
+            POS_MAP[id] = { x: x, y: y, w: w, h: h };
+            e.target.style.left = (x * 100) + "%";
+            e.target.style.top = (y * 100) + "%";
+            e.target.style.width = (w * 100) + "%";
+            e.target.style.height = (h * 100) + "%";
+
+            // If text element, update font size immediately during resize
+            if (state[id] && state[id].type === "text") {
+              updateTextSize(e.target, state[id], h);
+            }
+
+            if (editingId === id) syncEdit();
+            fbUpdate(id, { x: x, y: y, w: w, h: h });
+          },
+          end: function(e) {
+            var id = e.target.getAttribute("data-id");
+            _interactingId = null;
+            _startState = null;
+            e.target.classList.remove("resizing");
+            clearTimeout(_wTimers[id]);
+            if (id && POS_MAP[id] && roomRef) {
+              roomRef.child(id).update({
+                x: POS_MAP[id].x, y: POS_MAP[id].y,
+                w: POS_MAP[id].w, h: POS_MAP[id].h
+              });
+            }
           }
         }
-      }
-    });
+      });
   }
 
-  /* === Render === */
+  /* === Render Canvas Elements === */
   function render() {
     var keys = Object.keys(state);
     keys.sort(function(a, b) { return (state[a].z || 0) - (state[b].z || 0); });
@@ -400,6 +567,7 @@
     if (el.visible === false) cls += " hidden-el";
     if (el.type === "audio") cls += " is-audio";
     if (el.type === "text") cls += " is-text";
+    if (selectedId === id) cls += " selected";
     d.className = cls;
 
     d.style.pointerEvents = el.locked ? "none" : "";
@@ -409,6 +577,10 @@
     d.style.width = (el.w * 100) + "%";
     d.style.height = (el.h * 100) + "%";
     d.style.opacity = (el.opacity != null ? el.opacity : 100) / 100;
+    d.style.zIndex = el.z || 0;
+
+    var tagEl = d.querySelector(".tag");
+    if (tagEl) tagEl.textContent = (el.type === "image" || el.type === "video") ? (el.name || "") : "";
 
     var wrap = d.querySelector(".media-wrap");
     var txtEl = wrap.querySelector(".txt-content");
@@ -431,13 +603,10 @@
       wrap.style.fontWeight = "bold";
       wrap.style.fontStyle = "normal";
       wrap.style.lineHeight = "1.2";
-      wrap.style.textShadow = "3px 3px 8px rgba(0,0,0,0.9)";
+      wrap.style.textShadow = "2px 2px 6px rgba(0,0,0,0.9)";
       wrap.style.fontFamily = "'Comic Sans MS', 'Comic Sans', cursive";
-      var baseFs = el.fontSize || 56;
-      var hRatio = (el.h || 0.08) / 0.08;
-      var dynFs = Math.max(8, Math.min(Math.round(baseFs * hRatio), 600));
-      wrap.style.fontSize = dynFs + "px";
-      wrap.style.webkitTextStroke = "5px #000000";
+      wrap.style.paintOrder = "stroke fill";
+      updateTextSize(d, el, el.h || 0.08);
       if (txtEl) txtEl.textContent = el.text || "";
 
     } else if (el.type === "audio") {
@@ -467,14 +636,15 @@
         if (imgEl) imgEl.style.display = "none";
         if (!vidEl) {
           vidEl = document.createElement("video");
-          vidEl.muted = false;
+          vidEl.muted = true;
+          vidEl.autoplay = true;
+          vidEl.playsInline = true;
           vidEl.style.cssText = "width:100%;height:100%;object-fit:contain;display:block;pointer-events:none";
           wrap.appendChild(vidEl);
         }
         vidEl.style.display = "";
         if (vidEl.src !== src) vidEl.src = src;
         vidEl.loop = !!el.loop;
-        vidEl.volume = (el.volume || 100) / 100;
         vidEl.style.objectFit = el.objectFit || "contain";
         try {
           if (el.visible === false) { if (!vidEl.paused) vidEl.pause(); }
@@ -484,14 +654,31 @@
     }
   }
 
+  function updateTextSize(elDom, elData, hVal) {
+    var wrap = elDom.querySelector(".media-wrap");
+    if (!wrap) return;
+    var ch = canvas.clientHeight || 360;
+    var baseFs = elData.fontSize || 56;
+    // Scale proportional to preview canvas height vs 1080p stream
+    var scaledFs = (baseFs / 1080) * ch * ((hVal || 0.08) / 0.08);
+    var dynFs = Math.max(8, Math.min(Math.round(scaledFs), 300));
+    wrap.style.fontSize = dynFs + "px";
+    var strokeW = Math.max(1, Math.round(5 * (ch / 1080)));
+    wrap.style.webkitTextStroke = strokeW + "px #000000";
+  }
+
   function mkDiv(el) {
     var d = document.createElement("div");
-    var tagText = el.type === "image" ? (el.name || "") : "";
+    var tagText = (el.type === "image" || el.type === "video") ? (el.name || "") : "";
     d.innerHTML =
-      '<div class="resize-top"></div>' +
-      '<div class="resize-right"></div>' +
-      '<div class="resize-bottom"></div>' +
-      '<div class="resize-left"></div>' +
+      '<div class="resize-handle resize-nw" title="Redimensionar esquina"></div>' +
+      '<div class="resize-handle resize-n" title="Redimensionar arriba"></div>' +
+      '<div class="resize-handle resize-ne" title="Redimensionar esquina"></div>' +
+      '<div class="resize-handle resize-e" title="Redimensionar derecha"></div>' +
+      '<div class="resize-handle resize-se" title="Redimensionar esquina"></div>' +
+      '<div class="resize-handle resize-s" title="Redimensionar abajo"></div>' +
+      '<div class="resize-handle resize-sw" title="Redimensionar esquina"></div>' +
+      '<div class="resize-handle resize-w" title="Redimensionar izquierda"></div>' +
       '<div class="media-wrap">' +
       '<span class="tag">' + esc(tagText) + '</span>' +
       '<span class="txt-content" style="display:none"></span>' +
@@ -500,7 +687,7 @@
     return d;
   }
 
-  /* === Source List === */
+  /* === Source List in Sidebar === */
   function renderList(keys) {
     var existing = {};
     var rows = listEl.querySelectorAll(".row");
@@ -554,12 +741,13 @@
 
     r.querySelector(".edit-btn").addEventListener("click", function(e) {
       e.stopPropagation();
+      selectRow(id);
       openEdit(id);
     });
 
     r.querySelector(".del-btn").addEventListener("click", function(e) {
       e.stopPropagation();
-      if (confirm("Eliminar esta capa?")) {
+      if (confirm("¿Eliminar esta capa?")) {
         if (roomRef) roomRef.child(id).remove();
         if (editingId === id) closeEdit();
         if (selectedId === id) selectedId = null;
@@ -595,8 +783,10 @@
     selectedId = id;
     var rows = listEl.querySelectorAll(".row");
     for (var i = 0; i < rows.length; i++) rows[i].classList.remove("selected");
-    var row = listEl.querySelector('[data-id="' + id + '"]');
-    if (row) row.classList.add("selected");
+    if (id) {
+      var row = listEl.querySelector('[data-id="' + id + '"]');
+      if (row) row.classList.add("selected");
+    }
     var allEl = canvas.querySelectorAll(".el");
     for (var i = 0; i < allEl.length; i++) allEl[i].classList.remove("selected");
     if (id) {
@@ -605,7 +795,7 @@
     }
   }
 
-  /* === Edit === */
+  /* === Edit Panel === */
   function openEdit(id) {
     editingId = id;
     var el = state[id];
@@ -648,7 +838,7 @@
 
     document.getElementById("ed-opacity").value = el.opacity != null ? el.opacity : 100;
     document.getElementById("ed-opacity-val").textContent = el.opacity != null ? el.opacity : 100;
-    document.getElementById("ed-opacity").onchange = function() {
+    document.getElementById("ed-opacity").oninput = function() {
       var v = parseInt(document.getElementById("ed-opacity").value);
       if (roomRef) roomRef.child(id).update({ opacity: v });
       document.getElementById("ed-opacity-val").textContent = v;
@@ -662,19 +852,35 @@
     var edIds = ["ed-x", "ed-y", "ed-w", "ed-h"];
     for (var i = 0; i < edIds.length; i++) {
       (function(k) {
-        document.getElementById(k).onchange = function() {
+        var inp = document.getElementById(k);
+        inp.oninput = function() {
           var key = k.replace("ed-", "");
+          var val = parseFloat(inp.value);
+          if (isNaN(val)) return;
           var obj = {};
-          obj[key] = parseFloat(document.getElementById(k).value);
+          obj[key] = val;
+          if (!POS_MAP[id]) POS_MAP[id] = {};
+          POS_MAP[id][key] = val;
+          var cel = canvas.querySelector('[data-id="' + id + '"]');
+          if (cel) {
+            if (key === "x") cel.style.left = (val * 100) + "%";
+            if (key === "y") cel.style.top = (val * 100) + "%";
+            if (key === "w") cel.style.width = (val * 100) + "%";
+            if (key === "h") {
+              cel.style.height = (val * 100) + "%";
+              if (el.type === "text") updateTextSize(cel, el, val);
+            }
+          }
           if (roomRef) roomRef.child(id).update(obj);
         };
       })(edIds[i]);
     }
 
     document.getElementById("ed-del").onclick = function() {
-      if (confirm("Eliminar esta capa?")) {
+      if (confirm("¿Eliminar esta capa?")) {
         if (roomRef) roomRef.child(id).remove();
         closeEdit();
+        if (selectedId === id) selectedId = null;
       }
     };
 
@@ -725,10 +931,10 @@
   function detectType(u) {
     var s = u.toLowerCase();
     if (/\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)($|\?)/.test(s)) return "image";
-    if (/\.(mp4|webm|mov|mkv|avi)($|\?)/.test(s)) return "video";
-    if (/\.(mp3|ogg|wav|flac|aac|opus)($|\?)/.test(s)) return "audio";
-    if (s.includes("imgur.com") || s.includes("images.")) return "image";
-    if (s.includes("youtube.com") || s.includes("vimeo.com")) return "video";
+    if (/\.(mp4|webm|mov|mkv|avi|m4v)($|\?)/.test(s)) return "video";
+    if (/\.(mp3|ogg|wav|flac|aac|opus|m4a)($|\?)/.test(s)) return "audio";
+    if (s.includes("imgur.com") || s.includes("images.") || s.includes("giphy.com") || s.includes("tenor.com")) return "image";
+    if (s.includes("youtube.com") || s.includes("youtu.be") || s.includes("vimeo.com")) return "video";
     return null;
   }
 
