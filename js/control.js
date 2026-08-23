@@ -18,7 +18,7 @@
   var streamId = "sala-stream-demo";
 
   var _currentUser = {
-    uid: "guest-" + Math.floor(Math.random() * 8999 + 1000),
+    uid: localStorage.getItem("ugax_user_uid") || ("guest-" + Math.floor(Math.random() * 8999 + 1000)),
     name: localStorage.getItem("ugax_user") || "",
     photoURL: localStorage.getItem("ugax_user_photo") || ""
   };
@@ -342,6 +342,7 @@
       _currentUser.photoURL = user.photoURL || ("https://api.dicebear.com/7.x/bottts/svg?seed=" + encodeURIComponent(_currentUser.name));
       _currentUser.provider = providerName || "Social";
 
+      localStorage.setItem("ugax_user_uid", _currentUser.uid);
       localStorage.setItem("ugax_user", _currentUser.name);
       localStorage.setItem("ugax_user_photo", _currentUser.photoURL);
       localStorage.setItem("ugax_user_provider", _currentUser.provider);
@@ -351,7 +352,6 @@
 
     function setFormUnlocked(unlocked) {
       digits.forEach(function(d) { d.disabled = !unlocked; });
-      if (inPin) inPin.disabled = !unlocked;
       if (btnEnter) btnEnter.disabled = !unlocked;
     }
 
