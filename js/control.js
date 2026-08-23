@@ -8,6 +8,7 @@
   var POS_MAP = {};
   var roomRef = null;
   var db = null;
+  var _interactingId = null;
 
   /* === DOM refs === */
   var canvas, listEl, emptyEl, countEl, editSec, edName, dotEl, connTxt;
@@ -150,14 +151,7 @@
         x: 0.1, y: 0.1, w: 0.30, h: 0.08,
         z: Date.now(), opacity: 100, visible: true,
         name: shortName(txt), locked: false,
-        text: txt,
-        fontSize: parseInt(document.getElementById("selSz").value) || 56,
-        bold: document.getElementById("txtBold").checked,
-        italic: document.getElementById("txtItalic").checked,
-        txtColor: document.getElementById("txtCol").value,
-        bgType: document.getElementById("selBg").value,
-        bgColor: document.getElementById("txtBgCol").value,
-        bgOpacity: parseInt(document.getElementById("txtBgOp").value) || 60
+        text: txt
       });
       document.getElementById("txtIn").value = "";
     });
@@ -302,6 +296,9 @@
   function initInteract() {
     interact("#canvas .el").draggable({
       listeners: {
+        start: function(e) {
+          _interactingId = e.target.getAttribute("data-id");
+        },
         move: function(e) {
           var id = e.target.getAttribute("data-id");
           if (!id || !state[id] || state[id].locked) return;
@@ -322,6 +319,7 @@
         },
         end: function(e) {
           var id = e.target.getAttribute("data-id");
+          _interactingId = null;
           clearTimeout(_wTimers[id]);
           if (id && POS_MAP[id] && roomRef) {
             roomRef.child(id).update({ x: POS_MAP[id].x, y: POS_MAP[id].y });
@@ -331,6 +329,9 @@
     }).resizable({
       edges: { left: ".resize-left", right: ".resize-right", top: ".resize-top", bottom: ".resize-bottom" },
       listeners: {
+        start: function(e) {
+          _interactingId = e.target.getAttribute("data-id");
+        },
         move: function(e) {
           var id = e.target.getAttribute("data-id");
           if (!id || !state[id] || state[id].locked) return;
@@ -352,6 +353,7 @@
         },
         end: function(e) {
           var id = e.target.getAttribute("data-id");
+          _interactingId = null;
           e.target.classList.remove("resizing");
           clearTimeout(_wTimers[id]);
           if (id && POS_MAP[id] && roomRef) {
@@ -386,6 +388,7 @@
   }
 
   function upsertEl(id, el) {
+    if (id === _interactingId) return;
     var d = canvas.querySelector('[data-id="' + id + '"]');
     if (!d) {
       d = mkDiv(el);
@@ -424,11 +427,12 @@
         bgVal = "rgba(" + hexToRgb(el.bgColor) + "," + ((el.bgOpacity || 0) / 100) + ")";
       }
       wrap.style.background = bgVal;
-      wrap.style.color = el.txtColor || "#fff";
-      wrap.style.fontWeight = el.bold ? "bold" : "normal";
-      wrap.style.fontStyle = el.italic ? "italic" : "normal";
+      wrap.style.color = "#ffffff";
+      wrap.style.fontWeight = "bold";
+      wrap.style.fontStyle = "normal";
       wrap.style.lineHeight = "1.2";
-      wrap.style.textShadow = "2px 2px 6px rgba(0,0,0,0.8)";
+      wrap.style.textShadow = "3px 3px 8px rgba(0,0,0,0.9)";
+      wrap.style.fontFamily = "'Comic Sans MS', 'Comic Sans', cursive";
       var baseFs = el.fontSize || 56;
       var hRatio = (el.h || 0.08) / 0.08;
       var dynFs = Math.max(8, Math.min(Math.round(baseFs * hRatio), 600));
@@ -617,40 +621,10 @@
     if (el.type === "text") {
       tf.innerHTML =
         '<div class="edit-group"><label>Texto</label>' +
-        '<input type="text" id="ed-text" value="' + esc2(el.text || "") + '"></div>' +
-        '<div class="grid2">' +
-        '<div class="edit-group"><label>Tamano</label>' +
-        '<input type="number" id="ed-fontSize" value="' + (el.fontSize || 56) + '" min="8" max="400"></div>' +
-        '<div class="edit-group"><label>Color</label>' +
-        '<input type="color" id="ed-txtColor" value="' + (el.txtColor || "#ffffff") + '"></div></div>' +
-        '<div class="edit-group"><label>Fondo</label>' +
-        '<select id="ed-bgType"><option value="none"' + (el.bgType !== "solid" ? " selected" : "") + '>Sin fondo</option>' +
-        '<option value="solid"' + (el.bgType === "solid" ? " selected" : "") + '>Con fondo</option></select></div>' +
-        '<div class="grid2">' +
-        '<div class="edit-group"><label>Color fondo</label>' +
-        '<input type="color" id="ed-bgColor" value="' + (el.bgColor || "#000000") + '"></div>' +
-        '<div class="edit-group"><label>Opacidad fondo</label>' +
-        '<input type="number" id="ed-bgOpacity" value="' + (el.bgOpacity || 60) + '" min="0" max="100"></div></div>' +
-        '<div class="check-row">' +
-        '<label><input type="checkbox" id="ed-bold"' + (el.bold ? " checked" : "") + '> Negrita</label>' +
-        '<label><input type="checkbox" id="ed-italic"' + (el.italic ? " checked" : "") + '> Cursiva</label></div>';
+        '<input type="text" id="ed-text" value="' + esc2(el.text || "") + '"></div>';
 
       setTimeout(function() {
         bindInput("ed-text", "text");
-        bindInput("ed-fontSize", "fontSize", true);
-        bindInput("ed-txtColor", "txtColor");
-        bindInput("ed-bgType", "bgType");
-        bindInput("ed-bgColor", "bgColor");
-        bindInput("ed-bgOpacity", "bgOpacity", true);
-
-        var boldEl = document.getElementById("ed-bold");
-        if (boldEl) boldEl.addEventListener("change", function() {
-          if (roomRef) roomRef.child(id).update({ bold: boldEl.checked });
-        });
-        var italicEl = document.getElementById("ed-italic");
-        if (italicEl) italicEl.addEventListener("change", function() {
-          if (roomRef) roomRef.child(id).update({ italic: italicEl.checked });
-        });
       }, 50);
     }
 

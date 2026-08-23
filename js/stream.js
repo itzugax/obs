@@ -86,16 +86,17 @@
         bgVal = "rgba(" + hexToRgb(el.bgColor) + "," + ((el.bgOpacity || 0) / 100) + ")";
       }
       w.style.background = bgVal;
-      w.style.color = el.txtColor || "#fff";
-      w.style.fontWeight = el.bold ? "bold" : "normal";
-      w.style.fontStyle = el.italic ? "italic" : "normal";
+      w.style.color = "#ffffff";
+      w.style.fontWeight = "bold";
+      w.style.fontStyle = "normal";
+      w.style.lineHeight = "1.2";
+      w.style.textShadow = "3px 3px 8px rgba(0,0,0,0.9)";
+      w.style.fontFamily = "'Comic Sans MS', 'Comic Sans', cursive";
       var baseFs = el.fontSize || 56;
       var hRatio = (el.h || 0.08) / 0.08;
       var dynFs = Math.max(8, Math.min(Math.round(baseFs * hRatio), 600));
       w.style.fontSize = dynFs + "px";
-      w.style.lineHeight = "1.2";
       w.style.webkitTextStroke = "5px #000000";
-      w.style.textShadow = "2px 2px 6px rgba(0,0,0,0.8)";
       w.style.display = "flex";
       w.style.alignItems = "center";
       w.style.justifyContent = "center";
