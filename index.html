@@ -116,17 +116,17 @@
         <!-- Tabs (Archivos active by default) -->
         <div class="tabs">
           <button class="tab active" data-tab="tab-arch">&#128193; Archivos</button>
-          <button class="tab" data-tab="tab-url">&#128279; Linkaso</button>
+          <button class="tab" data-tab="tab-url">&#128279; Enlace</button>
           <button class="tab" data-tab="tab-txt">&#128196; Texto</button>
-          <button class="tab" data-tab="tab-widgets">&#129513; Widgets</button>
+          <button class="tab" data-tab="tab-widgets">&#9201; Timer</button>
         </div>
 
         <!-- File Tab (Active Default) -->
         <div class="tab-body active" id="tab-arch">
           <div class="drop-zone" id="drop-zone">
             <div class="drop-icon">&#128228;</div>
-            Suelta tu meme aquí o dale clic para subir
-            <div class="hint">sube de una uwu</div>
+            Arrastra archivos o haz clic para subir
+            <div class="hint">Imágenes, Videos o Audios</div>
           </div>
           <input type="file" id="fileIn" multiple accept="image/*,video/*,audio/*" style="display:none">
           <div class="upload-list" id="upload-list"></div>
@@ -134,41 +134,28 @@
 
         <!-- URL Tab -->
         <div class="tab-body" id="tab-url">
-          <label>Pega el zelda / URL aquí</label>
-          <input type="url" id="urlIn" placeholder="https://i.imgur.com/meme.jpg">
-          <div class="hint">Aguanta <b>JPG, PNG, GIF, WEBP</b> (fotos) · <b>MP4, WEBM</b> (videos) · <b>MP3, WAV, OGG</b> (rolitas)</div>
-          <button class="btn primary" id="addUrl">&#10010; Tirar al stream</button>
+          <label>URL Directa</label>
+          <input type="url" id="urlIn" placeholder="https://ejemplo.com/archivo.png">
+          <div class="hint">Soporta JPG, PNG, GIF, WEBP, MP4, WEBM, MP3</div>
+          <button class="btn primary" id="addUrl">&#10010; Agregar al Stream</button>
         </div>
 
         <!-- Text Tab -->
         <div class="tab-body" id="tab-txt">
-          <label>Qué quieres poner en pantalla</label>
-          <input type="text" id="txtIn" placeholder="Escribe cualquier webada...">
-          <div class="hint">Letras bien potentes con borde negro y fuentes personalizables</div>
+          <label>Texto en Pantalla</label>
+          <input type="text" id="txtIn" placeholder="Escribe un texto...">
           <div style="display:flex;gap:6px;margin-top:8px">
-            <button class="btn primary" id="addTxt" style="flex:1">&#10010; Tirar texto</button>
-            <button class="btn btn-tts" id="addTts" style="flex:1" title="Poner en pantalla y leer con voz en el stream">&#128483; Tirar TTS (Voz)</button>
+            <button class="btn primary" id="addTxt" style="flex:1">&#10010; Agregar Texto</button>
+            <button class="btn btn-tts" id="addTts" style="flex:1" title="Poner en pantalla y reproducir voz TTS">&#128483; Voz TTS</button>
           </div>
         </div>
 
-        <!-- Widgets Tab (Reloj, Ticker, Marcos, etc) -->
+        <!-- Widgets Tab (Timer & Reloj) -->
         <div class="tab-body" id="tab-widgets">
           <div class="widget-section">
-            <label>🕒 Reloj / Temporizador</label>
-            <div style="display:flex;gap:6px;margin-bottom:12px">
-              <button class="btn" id="btnAddClock" style="flex:1;font-size:11px">&#128339; Reloj Digital</button>
-              <button class="btn" id="btnAddTimer" style="flex:1;font-size:11px">&#9201; Countdown (5m)</button>
-            </div>
-
-            <label>📰 Ticker / Marquee en Movimiento</label>
-            <input type="text" id="marqueeIn" placeholder="🔴 SÍGUEME EN KICK: @streamer | BIENVENIDOS..." style="margin-bottom:6px">
-            <button class="btn primary" id="btnAddMarquee" style="width:100%;margin-bottom:12px">&#10010; Tirar Marquee / Ticker</button>
-
-            <label>🔲 Marcos & Formas Decorativas</label>
-            <div style="display:flex;gap:6px">
-              <button class="btn" id="btnAddWebcamBox" style="flex:1;font-size:11px">&#127909; Marco Cámara</button>
-              <button class="btn" id="btnAddShapeBox" style="flex:1;font-size:11px">&#9645; Caja / Banner</button>
-            </div>
+            <label>Temporizadores de Stream</label>
+            <button class="btn primary" id="btnAddTimer" style="width:100%;margin-bottom:8px">&#9201; Cuenta Regresiva (5 min)</button>
+            <button class="btn" id="btnAddClock" style="width:100%">&#128339; Reloj Digital en Vivo</button>
           </div>
         </div>
 

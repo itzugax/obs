@@ -1120,31 +1120,30 @@
   }
 
   /* Calculate exact tight text bounding box.
-     el.fontSize is the "logical" font size in 1080p px units.
-     updateTextSize renders: dynFs = el.fontSize * (ch/1080) → same ratio as this. */
+     Font scales with box height (boxH * 0.88), so we calculate box size to fit font and glyph width. */
   function calcTightTextBounds(txt, fontFamily, fontSize) {
     var text = txt || "Texto";
-    var fSize = fontSize || 56;  // this IS the logical px size at 1080p
+    var fSize = fontSize || 56;
     var fFam = fontFamily || "'Montserrat', sans-serif";
     var cvs = document.createElement("canvas");
     var ctx = cvs.getContext("2d");
-    ctx.font = "bold " + fSize + "px " + fFam;
+    ctx.font = "900 " + fSize + "px " + fFam;
     var m = ctx.measureText(text);
 
     var pxW = m.width;
-    var pxH = fSize * 0.75;
+    var pxH = fSize * 0.82;
     if (m.actualBoundingBoxAscent !== undefined && m.actualBoundingBoxDescent !== undefined) {
       pxH = m.actualBoundingBoxAscent + m.actualBoundingBoxDescent;
     }
 
-    // Normalize to 1920×1080 stream coordinates
-    // Width: exact glyph width + 2px breathing room
-    // Height: exact glyph height + 2px breathing room
-    var normW = (pxW + 2) / 1920;
-    var normH = (pxH + 2) / 1080;
+    var boxH_1080 = (pxH / 0.88) + 2;
+    var boxW_1920 = pxW + 6;
+
+    var normW = boxW_1920 / 1920;
+    var normH = boxH_1080 / 1080;
     return {
-      w: parseFloat(Math.max(0.01, Math.min(0.98, normW)).toFixed(4)),
-      h: parseFloat(Math.max(0.01, Math.min(0.98, normH)).toFixed(4))
+      w: parseFloat(Math.max(0.015, Math.min(0.98, normW)).toFixed(4)),
+      h: parseFloat(Math.max(0.015, Math.min(0.98, normH)).toFixed(4))
     };
   }
 
@@ -1246,43 +1245,10 @@
     }
   }
 
-  /* === Add Widgets (Clock, Marquee, Box, etc.) === */
+  /* === Add Widgets (Countdown & Clock) === */
   function initAddWidgets() {
     var btnClock = document.getElementById("btnAddClock");
     var btnTimer = document.getElementById("btnAddTimer");
-    var btnMarquee = document.getElementById("btnAddMarquee");
-    var inMarquee = document.getElementById("marqueeIn");
-    var btnWebcamBox = document.getElementById("btnAddWebcamBox");
-    var btnShapeBox = document.getElementById("btnAddShapeBox");
-
-    if (btnClock) {
-      btnClock.addEventListener("click", function() {
-        if (!roomRef) { showToast("Sin conexión con el servidor.", "error"); return; }
-        var id = roomRef.push().key;
-        var author = _currentUser.name || localStorage.getItem("ugax_user") || "streamer";
-        roomRef.child(id).set({
-          type: "clock",
-          clockMode: "time",
-          x: 0.72, y: 0.04, w: 0.24, h: 0.08,
-          z: getNextZ(), opacity: 100, visible: true,
-          name: "🕒 Reloj Digital",
-          locked: false,
-          addedBy: author,
-          addedByPhoto: _currentUser.photoURL || localStorage.getItem("ugax_user_photo") || "",
-          textColor: "#53fc18",
-          bgColor: "#090c10",
-          bgOpacity: 90,
-          borderColor: "#252a36",
-          borderWidth: 1,
-          borderRadius: 8,
-          fontFamily: "'Orbitron', sans-serif",
-          fontSize: 48
-        });
-        selectRow(id);
-        openEdit(id);
-        showToast("Reloj digital agregado al stream 🕒", "success");
-      });
-    }
 
     if (btnTimer) {
       btnTimer.addEventListener("click", function() {
@@ -1295,112 +1261,61 @@
           timerSeconds: 300,
           timerRunning: true,
           timerStartedAt: Date.now(),
-          x: 0.38, y: 0.04, w: 0.24, h: 0.08,
+          x: 0.38, y: 0.05, w: 0.24, h: 0.09,
           z: getNextZ(), opacity: 100, visible: true,
-          name: "⏱️ Cuenta Regresiva",
-          locked: false,
-          addedBy: author,
-          addedByPhoto: _currentUser.photoURL || localStorage.getItem("ugax_user_photo") || "",
-          textColor: "#53fc18",
-          bgColor: "#090c10",
-          bgOpacity: 90,
-          borderColor: "#252a36",
-          borderWidth: 1,
-          borderRadius: 8,
-          fontFamily: "'Orbitron', sans-serif",
-          fontSize: 48
-        });
-        selectRow(id);
-        openEdit(id);
-        showToast("Cuenta regresiva de 5 min agregada ⏱️", "success");
-      });
-    }
-
-    if (btnMarquee) {
-      btnMarquee.addEventListener("click", function() {
-        if (!roomRef) { showToast("Sin conexión con el servidor.", "error"); return; }
-        var txt = (inMarquee && inMarquee.value.trim()) || "🔴 BIENVENIDOS AL STREAM | SÍGUEME EN KICK: @" + (_currentUser.name || "streamer") + " | ⭐ GRACIAS POR EL APOYO";
-        var id = roomRef.push().key;
-        var author = _currentUser.name || localStorage.getItem("ugax_user") || "streamer";
-        roomRef.child(id).set({
-          type: "marquee",
-          text: txt,
-          speed: 5,
-          x: 0.05, y: 0.90, w: 0.90, h: 0.06,
-          z: getNextZ(), opacity: 100, visible: true,
-          name: "📰 Ticker: " + txt.slice(0, 16) + "...",
+          name: "⏱️ Countdown 5m",
           locked: false,
           addedBy: author,
           addedByPhoto: _currentUser.photoURL || localStorage.getItem("ugax_user_photo") || "",
           textColor: "#ffffff",
-          bgColor: "#0d1117",
-          bgOpacity: 90,
-          borderColor: "#252a36",
-          borderWidth: 1,
-          borderRadius: 4,
-          fontFamily: "'Montserrat', sans-serif",
-          fontSize: 26
-        });
-        if (inMarquee) inMarquee.value = "";
-        selectRow(id);
-        openEdit(id);
-        showToast("Ticker animado agregado al stream 📰", "success");
-      });
-    }
-
-    if (btnWebcamBox) {
-      btnWebcamBox.addEventListener("click", function() {
-        if (!roomRef) { showToast("Sin conexión con el servidor.", "error"); return; }
-        var id = roomRef.push().key;
-        var author = _currentUser.name || localStorage.getItem("ugax_user") || "streamer";
-        roomRef.child(id).set({
-          type: "box",
-          boxType: "frame",
-          x: 0.05, y: 0.05, w: 0.32, h: 0.32 * (9 / 16) * (16 / 9) * 0.56,
-          z: getNextZ(), opacity: 100, visible: true,
-          name: "🎥 Marco Webcam",
-          locked: false,
-          addedBy: author,
-          addedByPhoto: _currentUser.photoURL || localStorage.getItem("ugax_user_photo") || "",
+          strokeColor: "#000000",
+          strokeWidth: 6,
           bgColor: "#000000",
           bgOpacity: 0,
-          borderColor: "#53fc18",
-          borderWidth: 4,
-          borderRadius: 8
+          borderColor: "#000000",
+          borderWidth: 0,
+          borderRadius: 0,
+          fontFamily: "'Montserrat', sans-serif",
+          fontSize: 64
         });
         selectRow(id);
         openEdit(id);
-        showToast("Marco de cámara agregado 🎥", "success");
+        showToast("Cuenta regresiva (5m) agregada ⏱️", "success");
       });
     }
 
-    if (btnShapeBox) {
-      btnShapeBox.addEventListener("click", function() {
+    if (btnClock) {
+      btnClock.addEventListener("click", function() {
         if (!roomRef) { showToast("Sin conexión con el servidor.", "error"); return; }
         var id = roomRef.push().key;
         var author = _currentUser.name || localStorage.getItem("ugax_user") || "streamer";
         roomRef.child(id).set({
-          type: "box",
-          boxType: "solid",
-          x: 0.30, y: 0.35, w: 0.40, h: 0.20,
+          type: "clock",
+          clockMode: "time",
+          x: 0.74, y: 0.05, w: 0.22, h: 0.08,
           z: getNextZ(), opacity: 100, visible: true,
-          name: "🔲 Caja Banner",
+          name: "🕒 Reloj en Vivo",
           locked: false,
           addedBy: author,
           addedByPhoto: _currentUser.photoURL || localStorage.getItem("ugax_user_photo") || "",
-          bgColor: "#12161f",
-          bgOpacity: 85,
-          borderColor: "#252a36",
-          borderWidth: 2,
-          borderRadius: 8
+          textColor: "#ffffff",
+          strokeColor: "#000000",
+          strokeWidth: 5,
+          bgColor: "#000000",
+          bgOpacity: 0,
+          borderColor: "#000000",
+          borderWidth: 0,
+          borderRadius: 0,
+          fontFamily: "'Montserrat', sans-serif",
+          fontSize: 56
         });
         selectRow(id);
         openEdit(id);
-        showToast("Caja decorativa agregada 🔲", "success");
+        showToast("Reloj digital agregado 🕒", "success");
       });
     }
 
-    // Single ticker loop for clock in panel
+    // Single ticker loop for live clock and timer in panel
     setInterval(function() {
       var clockEls = canvas.querySelectorAll('.el[data-id]');
       clockEls.forEach(function(cel) {
@@ -2083,6 +1998,11 @@
               updateTextSize(e.target, state[id], h, w);
             }
 
+            // If text or clock element, auto-scale font size with box height & width immediately in real-time
+            if (state[id] && (state[id].type === "text" || state[id].type === "clock")) {
+              updateTextSize(e.target, state[id], h, w);
+            }
+
             if (editingId === id) syncEdit();
             fbUpdate(id, { x: x, y: y, w: w, h: h });
           },
@@ -2093,10 +2013,14 @@
             e.target.classList.remove("resizing");
             clearTimeout(_wTimers[id]);
             if (id && POS_MAP[id] && roomRef) {
-              roomRef.child(id).update({
+              var updateObj = {
                 x: POS_MAP[id].x, y: POS_MAP[id].y,
                 w: POS_MAP[id].w, h: POS_MAP[id].h
-              });
+              };
+              if (state[id] && (state[id].type === "text" || state[id].type === "clock")) {
+                updateObj.fontSize = Math.round(POS_MAP[id].h * 1080 * 0.88);
+              }
+              roomRef.child(id).update(updateObj);
             }
           }
         }
@@ -2353,8 +2277,11 @@
     var wrap = elDom.querySelector(".media-wrap");
     if (!wrap) return;
     var ch = canvas.clientHeight || 360;
-    // Scale the stored logical font size (1080p reference) to the preview canvas size
-    var dynFs = Math.max(6, Math.round((elData.fontSize || 56) * (ch / 1080)));
+    var currentH = (hVal != null ? hVal : (elData.h || 0.08));
+    var boxPxH = currentH * ch;
+
+    // Dynamically scale font size with box height so resizing immediately grows/shrinks text
+    var dynFs = Math.max(8, Math.round(boxPxH * 0.88));
 
     wrap.style.fontSize = dynFs + "px";
     wrap.style.lineHeight = "1";
@@ -2362,13 +2289,13 @@
     wrap.style.alignItems = "center";
     wrap.style.justifyContent = "center";
 
-    // Adaptive stroke & shadow
-    var strokeW = Math.max(0.4, Math.min(dynFs * 0.05, 5));
+    // Adaptive stroke & shadow to maintain legibility when resized
+    var strokeW = Math.max(0.6, Math.min(dynFs * 0.08, 8));
     wrap.style.webkitTextStroke = strokeW.toFixed(1) + "px " + (elData.strokeColor || "#000000");
 
-    if (dynFs < 16) {
+    if (dynFs < 18) {
       wrap.style.textShadow = "1px 1px 2px rgba(0,0,0,0.8)";
-    } else if (dynFs < 40) {
+    } else if (dynFs < 45) {
       wrap.style.textShadow = "2px 2px 4px rgba(0,0,0,0.85)";
     } else {
       wrap.style.textShadow = "3px 3px 6px rgba(0,0,0,0.9)";

@@ -186,18 +186,18 @@
       w.style.fontFamily = el.fontFamily || "'Montserrat', sans-serif";
       w.style.paintOrder = "stroke fill";
 
-      // Use stored logical font size directly (it's already in 1080p px units)
-      var dynFs = Math.max(6, el.fontSize || 56);
+      var boxH = (el.h || 0.08) * 1080;
+      var dynFs = Math.max(8, Math.round(boxH * 0.88));
 
       w.style.fontSize = dynFs + "px";
 
       // Adaptive stroke & shadow
-      var strokeW = Math.max(0.4, Math.min(dynFs * 0.05, 5));
+      var strokeW = Math.max(0.6, Math.min(dynFs * 0.08, 8));
       w.style.webkitTextStroke = strokeW.toFixed(1) + "px " + (el.strokeColor || "#000000");
 
-      if (dynFs < 16) {
+      if (dynFs < 18) {
         w.style.textShadow = "1px 1px 2px rgba(0,0,0,0.8)";
-      } else if (dynFs < 40) {
+      } else if (dynFs < 45) {
         w.style.textShadow = "2px 2px 4px rgba(0,0,0,0.85)";
       } else {
         w.style.textShadow = "3px 3px 6px rgba(0,0,0,0.9)";
@@ -218,20 +218,34 @@
       w.style.boxSizing = "border-box";
 
       var bgVal = "transparent";
-      if (el.bgColor) {
-        bgVal = "rgba(" + hexToRgb(el.bgColor) + "," + ((el.bgOpacity != null ? el.bgOpacity : 90) / 100) + ")";
+      if (el.bgOpacity > 0 && el.bgColor) {
+        bgVal = "rgba(" + hexToRgb(el.bgColor) + "," + ((el.bgOpacity || 100) / 100) + ")";
       }
       w.style.background = bgVal;
-      w.style.color = el.textColor || "#53fc18";
-      w.style.border = (el.borderWidth || 1) + "px solid " + (el.borderColor || "#252a36");
-      w.style.borderRadius = (el.borderRadius || 8) + "px";
+      w.style.color = el.textColor || "#ffffff";
+      w.style.border = (el.borderWidth ? el.borderWidth + "px solid " + (el.borderColor || "#000000") : "none");
+      w.style.borderRadius = (el.borderRadius ? el.borderRadius + "px" : "0px");
       w.style.display = "flex";
       w.style.alignItems = "center";
       w.style.justifyContent = "center";
-      w.style.fontFamily = el.fontFamily || "'Orbitron', sans-serif";
-      w.style.fontWeight = "bold";
-      w.style.letterSpacing = "2px";
-      w.style.fontSize = Math.max(12, el.fontSize || 48) + "px";
+      w.style.fontFamily = el.fontFamily || "'Montserrat', sans-serif";
+      w.style.fontWeight = "900";
+      w.style.paintOrder = "stroke fill";
+
+      var boxH = (el.h || 0.08) * 1080;
+      var dynFs = Math.max(8, Math.round(boxH * 0.88));
+      w.style.fontSize = dynFs + "px";
+
+      var strokeW = Math.max(0.6, Math.min(dynFs * 0.08, 8));
+      w.style.webkitTextStroke = strokeW.toFixed(1) + "px " + (el.strokeColor || "#000000");
+
+      if (dynFs < 18) {
+        w.style.textShadow = "1px 1px 2px rgba(0,0,0,0.8)";
+      } else if (dynFs < 45) {
+        w.style.textShadow = "2px 2px 4px rgba(0,0,0,0.85)";
+      } else {
+        w.style.textShadow = "3px 3px 6px rgba(0,0,0,0.9)";
+      }
 
       if (!w.querySelector("span")) w.innerHTML = "<span></span>";
       w.querySelector("span").textContent = formatClockTime(el);
