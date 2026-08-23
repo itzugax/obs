@@ -73,6 +73,31 @@
       }
     });
 
+    // Instant TTS (Text-to-Speech) Stream Voice Output
+    var _lastTtsTs = Date.now();
+    db.ref("streams/" + streamId + "/tts").on("value", function(snap) {
+      var data = snap.val();
+      if (!data || !data.text || !data.ts) return;
+      if (data.ts <= _lastTtsTs || (Date.now() - data.ts) > 15000) return;
+      _lastTtsTs = data.ts;
+
+      try {
+        if ('speechSynthesis' in window) {
+          window.speechSynthesis.cancel();
+          var utt = new SpeechSynthesisUtterance(data.text);
+          utt.lang = 'es-ES';
+          utt.rate = 1.0;
+          utt.pitch = 1.0;
+          var voices = window.speechSynthesis.getVoices();
+          var esVoice = voices.find(function(v) { return v.lang && v.lang.startsWith('es'); });
+          if (esVoice) utt.voice = esVoice;
+          window.speechSynthesis.speak(utt);
+        }
+      } catch (e) {
+        console.warn("TTS stream error:", e);
+      }
+    });
+
   } catch (e) {
     console.error("Firebase error:", e);
     box.innerHTML = '<div style="color:red;padding:20px;text-align:center">Error de conexión al servidor de streaming</div>';

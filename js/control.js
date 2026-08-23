@@ -1085,19 +1085,36 @@
     };
   }
 
+  /* === TTS Helper === */
+  function speakTts(text) {
+    if (!('speechSynthesis' in window)) return;
+    try {
+      window.speechSynthesis.cancel();
+      var utt = new SpeechSynthesisUtterance(text);
+      utt.lang = 'es-ES';
+      utt.rate = 1.0;
+      var voices = window.speechSynthesis.getVoices();
+      var esVoice = voices.find(function(v) { return v.lang && v.lang.startsWith('es'); });
+      if (esVoice) utt.voice = esVoice;
+      window.speechSynthesis.speak(utt);
+    } catch(e) {}
+  }
+
   /* === Add Text === */
   function initAddText() {
     var btn = document.getElementById("addTxt");
+    var btnTts = document.getElementById("addTts");
     var inTxt = document.getElementById("txtIn");
-    if (!btn || !inTxt) return;
+    if (!inTxt) return;
 
-    function doAddText() {
+    function doAddText(withTts) {
       var txt = inTxt.value.trim();
       if (!txt) { alert("Escribe algo pe, no lo dejes vacío xD"); inTxt.focus(); return; }
       if (!roomRef) { alert("Sin conexión a Firebase papu. F5 para revivir."); return; }
       var id = roomRef.push().key;
       var bounds = calcTightTextBounds(txt);
       var author = _currentUser.name || localStorage.getItem("ugax_user") || "streamer";
+      
       roomRef.child(id).set({
         type: "text",
         x: 0.1, y: 0.1, w: bounds.w, h: bounds.h,
@@ -1109,18 +1126,30 @@
         text: txt, fontSize: 56,
         textColor: "#ffffff", strokeColor: "#000000", strokeWidth: 5,
         fontFamily: "'Comic Sans MS', 'Comic Sans', cursive",
-        bgType: "none", bgColor: "#000000", bgOpacity: 0
+        bgType: "none", bgColor: "#000000", bgOpacity: 0,
+        tts: !!withTts
       });
+
+      if (withTts && db) {
+        db.ref("streams/" + streamId + "/tts").set({
+          text: txt,
+          ts: Date.now(),
+          author: author
+        });
+        speakTts(txt);
+      }
+
       inTxt.value = "";
       selectRow(id);
       openEdit(id);
     }
 
-    btn.addEventListener("click", doAddText);
+    if (btn) btn.addEventListener("click", function() { doAddText(false); });
+    if (btnTts) btnTts.addEventListener("click", function() { doAddText(true); });
     inTxt.addEventListener("keydown", function(e) {
       if (e.key === "Enter") {
         e.preventDefault();
-        doAddText();
+        doAddText(false);
       }
     });
   }

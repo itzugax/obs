@@ -653,6 +653,19 @@ input[type="range"] {
   color: var(--text);
 }
 
+.btn.btn-tts {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff !important;
+  font-weight: 800;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
+.btn.btn-tts:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  transform: translateY(-1px);
+}
+
 .check-row input {
   accent-color: var(--accent);
   width: 16px;
