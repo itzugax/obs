@@ -1,644 +1,371 @@
-/* ================================================================
- *  control.js — Panel del Moderador (v3)
- *  Firebase RTDB + Supabase Storage + interact.js
- *  Soporta: imagenes, videos, audios, textos, archivos del PC
- * ================================================================ */
-
+/* === Firebase === */
+var firebaseConfig = {apiKey:"AIzaSyDummyPlaceholder123",databaseURL:"https://obss-1a2ae-default-rtdb.firebaseio.com",projectId:"obss-1a2ae",storageBucket:"obss-1a2ae.appspot.com",messagingSenderId:"000000000000",appId:"1:000000000000:web:000000000000"};
 firebase.initializeApp(firebaseConfig);
 var db = firebase.database();
-var roomRef = db.ref("overlays/" + STREAM_ID + "/elements");
-var sb = window.supabase.createClient(supabaseConfig.url, supabaseConfig.anonKey);
+var STREAM_ID = "sala-stream-demo";
+var roomRef = db.ref("streams/" + STREAM_ID + "/elements");
 
-/* ── DOM refs ── */
+/* === Supabase === */
+var SB_URL = "https://esccrtvcfssykpmltroz.supabase.co";
+var SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVzY3J0dmNmZnN5a3BtbHRyb3oiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc1NDk5MTczNSwiZXhwIjoyMDcwNTY3NzM1fQ.8Ax1sNJ2D4pVFaTtT7x9ksW3Kn0h0y120kJvRfvxCY8";
+var supabase = window.supabase.createClient(SB_URL, SB_KEY);
+var BUCKET = "wasa";
+
+/* === State === */
+var state = {};
+var editingId = null;
+var selectedId = null;
+var AUDIO_CTX_MAP = {};
+var POS_MAP = {};
+
+/* === DOM === */
 var canvas = document.getElementById("canvas");
 var listEl = document.getElementById("list");
-var emptyMsg = document.getElementById("empty-msg");
-var urlInput = document.getElementById("url-input");
-var typeHint = document.getElementById("type-hint");
-var addUrlBtn = document.getElementById("add-url");
-var addTextBtn = document.getElementById("add-text");
-var hideAllBtn = document.getElementById("hide-all");
-var showAllBtn = document.getElementById("show-all");
-var clearAllBtn = document.getElementById("clear-all");
+var emptyEl = document.getElementById("empty-msg");
 var countEl = document.getElementById("count");
-var connDot = document.querySelector("#conn .dot");
-var connText = document.getElementById("conn-text");
-var streamLabel = document.getElementById("stream-label");
-var dropZone = document.getElementById("drop-zone");
-var fileInput = document.getElementById("file-input");
-var uploadList = document.getElementById("upload-list");
-var textInput = document.getElementById("text-input");
+var editSec = document.getElementById("edit-section");
+var edName = document.getElementById("ed-name");
+var dotEl = document.getElementById("dot");
+var connTxt = document.getElementById("conn-txt");
 
-streamLabel.textContent = "Sala: " + STREAM_ID;
-
-/* ── Estado local ── */
-var state = new Map();
-var nodes = new Map();
-var rows = new Map();
-var dragging = new Set();
-var writeTimers = new Map();
-var zTop = 0;
-var editingId = null;
-
-/* ── Utilidades ── */
-function clamp(v, lo, hi) { return Math.min(hi, Math.max(lo, v)); }
-function r4(n) { return Math.round(n * 10000) / 10000; }
-
-function detectType(url) {
-  var u = url.split("?")[0].toLowerCase();
-  if (/\.(mp4|webm|ogv|mov)$/.test(u)) return "video";
-  if (/\.(mp3|wav|ogg|m4a|aac|flac)$/.test(u)) return "audio";
-  return "image";
-}
-
-function nameFromUrl(url) {
-  try {
-    var parts = new URL(url).pathname.split("/");
-    var name = decodeURIComponent(parts.pop() || "");
-    return name.length > 24 ? name.slice(0, 21) + "..." : name || "sin nombre";
-  } catch (e) {
-    return url.length > 24 ? url.slice(0, 21) + "..." : url;
-  }
-}
-
-function typeIcon(t) {
-  if (t === "video") return "Video";
-  if (t === "audio") return "Audio";
-  if (t === "text") return "Txt";
-  return "Img";
-}
-
-/* ── Throttled Firebase writes ── */
-function scheduleWrite(id) {
-  if (writeTimers.has(id)) return;
-  writeTimers.set(id, setTimeout(function () {
-    writeTimers.delete(id);
-    pushTransform(id);
-  }, 80));
-}
-
-function flushWrite(id) {
-  var t = writeTimers.get(id);
-  if (t) { clearTimeout(t); writeTimers.delete(id); }
-  pushTransform(id);
-}
-
-function pushTransform(id) {
-  var el = state.get(id);
-  if (!el) return;
-  roomRef.child(id).update({
-    x: r4(el.x), y: r4(el.y),
-    w: r4(el.w), h: r4(el.h)
-  });
-}
-
-/* ── Clamping ── */
-function clampEl(el) {
-  el.w = clamp(el.w, 0.02, 1);
-  el.h = clamp(el.h, 0.02, 1);
-  el.x = clamp(el.x, 0, 1 - el.w);
-  el.y = clamp(el.y, 0, 1 - el.h);
-}
-
-/* ── Paint position ── */
-function paintPos(node, el) {
-  node.style.left = (el.x * 100) + "%";
-  node.style.top = (el.y * 100) + "%";
-  node.style.width = (el.w * 100) + "%";
-  node.style.height = (el.h * 100) + "%";
-  node.style.zIndex = el.z || 0;
-}
-
-function cw() { return canvas.clientWidth || 1; }
-function ch() { return canvas.clientHeight || 1; }
-
-/* ================================================================
- *  Render: crear / actualizar nodo en el lienzo
- * ================================================================ */
-function renderNode(el) {
-  var node = nodes.get(el.id);
-
-  if (!node) {
-    node = document.createElement("div");
-    node.className = "el type-" + el.type;
-    node.dataset.id = el.id;
-
-    var wrap = document.createElement("div");
-    wrap.className = "media-wrap";
-
-    if (el.type === "text") {
-      node.classList.add("is-text");
-      wrap.textContent = el.content || "";
-      var _fs = (el.fontSize || 48) * Math.sqrt((el.w * el.h) / (0.30 * 0.08));
-      wrap.style.fontSize = _fs + "px";
-      wrap.style.color = "#ffffff";
-      wrap.style.webkitTextStroke = "3px #000000";
-      wrap.style.paintOrder = "stroke fill";
-      wrap.style.fontFamily = el.fontFamily || "Arial, sans-serif";
-      wrap.style.fontWeight = el.bold ? "bold" : "normal";
-      wrap.style.fontStyle = el.italic ? "italic" : "normal";
-      var alpha = Math.round(((el.bgOpacity || 0) / 100) * 255);
-      var aHex = alpha.toString(16).padStart(2, "0");
-      wrap.style.backgroundColor = (el.bgColor || "#000000") + aHex;
-    } else if (el.type === "image") {
-      var img = document.createElement("img");
-      img.src = el.url;
-      img.draggable = false;
-      img.onerror = function () { wrap.style.outline = "2px solid #f85149"; };
-      wrap.appendChild(img);
-    } else if (el.type === "video") {
-      var vid = document.createElement("video");
-      vid.src = el.url;
-      vid.loop = el.loop !== false;
-      vid.playsInline = true;
-      vid.preload = "auto";
-      vid.muted = false;
-      vid.volume = el.volume != null ? el.volume : 1;
-      vid.onerror = function () { wrap.style.outline = "2px solid #f85149"; };
-      if (el.playing !== false) vid.play().catch(function () {});
-      wrap.appendChild(vid);
-    } else if (el.type === "audio") {
-      node.classList.add("is-audio");
-      var badge = document.createElement("div");
-      badge.className = "audio-badge";
-      badge.textContent = "Audio";
-      wrap.appendChild(badge);
-      var aud = document.createElement("audio");
-      aud.src = el.url;
-      aud.preload = "auto";
-      aud.volume = el.volume != null ? el.volume : 1;
-      aud.onerror = function () { wrap.style.outline = "2px solid #f85149"; };
-      if (el.playing !== false) aud.play().catch(function () {});
-      wrap.appendChild(aud);
-    }
-
-    var tag = document.createElement("div");
-    tag.className = "tag";
-    tag.textContent = el.type === "text" ? (el.content || "texto").slice(0, 20) : nameFromUrl(el.url || "");
-    wrap.appendChild(tag);
-
-    node.appendChild(wrap);
-    canvas.appendChild(node);
-    nodes.set(el.id, node);
-    makeInteractive(node, el.id);
-  }
-
-  /* Sincronizar multimedia */
-  if (el.type !== "image" && el.type !== "text") {
-    var media = node.querySelector("video, audio");
-    if (media) {
-      media.volume = el.volume != null ? el.volume : 1;
-      if (el.playing === false) { media.pause(); }
-      else { media.play().catch(function () {}); }
-    }
-  }
-
-  /* Actualizar contenido de texto */
-  if (el.type === "text") {
-    var wrap2 = node.querySelector(".media-wrap");
-    if (wrap2) {
-      wrap2.textContent = el.content || "";
-      var _fs2 = (el.fontSize || 48) * Math.sqrt((el.w * el.h) / (0.30 * 0.08));
-      wrap2.style.fontSize = _fs2 + "px";
-      wrap2.style.color = "#ffffff";
-      wrap2.style.webkitTextStroke = "3px #000000";
-      wrap2.style.paintOrder = "stroke fill";
-      wrap2.style.fontFamily = el.fontFamily || "Arial, sans-serif";
-      wrap2.style.fontWeight = el.bold ? "bold" : "normal";
-      wrap2.style.fontStyle = el.italic ? "italic" : "normal";
-      var a2 = Math.round(((el.bgOpacity || 0) / 100) * 255);
-      wrap2.style.backgroundColor = (el.bgColor || "#000000") + a2.toString(16).padStart(2, "0");
-    }
-  }
-
-  if (!dragging.has(el.id)) {
-    node.classList.toggle("hidden-el", el.visible === false);
-    paintPos(node, el);
-  }
-}
-
-function removeNode(id) {
-  var node = nodes.get(id);
-  if (node) { node.remove(); nodes.delete(id); }
-  var row = rows.get(id);
-  if (row) { row.remove(); rows.delete(id); }
-  state.delete(id);
-  updateCount();
-}
-
-/* ================================================================
- *  interact.js
- * ================================================================ */
-function makeInteractive(node, id) {
-  interact(node)
-    .draggable({
-      listeners: {
-        start: function () { dragging.add(id); node.style.zIndex = 9999; },
-        move: function (ev) {
-          var el = state.get(id); if (!el) return;
-          el.x += ev.dx / cw(); el.y += ev.dy / ch();
-          clampEl(el); paintPos(node, el); scheduleWrite(id);
-        },
-        end: function () {
-          var el = state.get(id);
-          if (el) { node.style.zIndex = el.z || 0; clampEl(el); paintPos(node, el); }
-          dragging.delete(id); flushWrite(id);
-        }
-      }
-    })
-    .resizable({
-      edges: { left: true, right: true, top: true, bottom: true },
-      listeners: {
-        start: function () { dragging.add(id); node.classList.add("resizing"); },
-        move: function (ev) {
-          var el = state.get(id); if (!el) return;
-          var d = ev.deltaRect;
-          el.w += d.width / cw(); el.h += d.height / ch();
-          el.x += d.left / cw(); el.y += d.top / ch();
-          clampEl(el); paintPos(node, el); scheduleWrite(id);
-        },
-        end: function () {
-          var el = state.get(id);
-          if (el) { clampEl(el); paintPos(node, el); }
-          dragging.delete(id); node.classList.remove("resizing"); flushWrite(id);
-        }
-      }
-    })
-    .on("doubletap", function () { bringToFront(id); });
-}
-
-function bringToFront(id) {
-  zTop++;
-  roomRef.child(id).update({ z: zTop });
-}
-
-/* ================================================================
- *  Lista lateral
- * ================================================================ */
-function renderRow(el) {
-  var row = rows.get(el.id);
-  var isMedia = el.type === "video" || el.type === "audio";
-
-  if (!row) {
-    row = document.createElement("div");
-    row.className = "row";
-    row.dataset.id = el.id;
-
-    var volVal = el.volume != null ? Math.round(el.volume * 100) : 80;
-
-    row.innerHTML =
-      '<span class="icon">' + typeIcon(el.type) + '</span>' +
-      '<span class="layer-badge">' + (el.z || 0) + '</span>' +
-      '<span class="name">' + (el.type === "text" ? (el.content || "").slice(0, 12) : nameFromUrl(el.url || "")) + '</span>' +
-      (isMedia ? '<span class="vol-wrap"><span class="vol-icon">Vol</span><input class="vol" type="range" min="0" max="100" value="' + volVal + '"></span>' : '') +
-      '<button class="ibtn edit" title="Editar">✎</button>' +
-      '<button class="ibtn eye" title="Mostrar / Ocultar">◉</button>' +
-      (isMedia ? '<button class="ibtn play" title="Pausar / Reanudar">⏸</button>' : '') +
-      (isMedia ? '<button class="ibtn loop" title="Bucle on/off">🔁</button>' : '') +
-      '<button class="ibtn front" title="Traer al frente">▲</button>' +
-      '<button class="ibtn danger" title="Eliminar">✕</button>';
-
-    if (isMedia) {
-      var vol = row.querySelector(".vol");
-      if (vol) {
-        vol.addEventListener("input", function () {
-          roomRef.child(el.id).update({ volume: r4(parseInt(this.value) / 100) });
-        });
-      }
-
-      row.querySelector(".play").addEventListener("click", function () {
-        var cur = state.get(el.id);
-        roomRef.child(el.id).update({ playing: cur && cur.playing === false });
-      });
-
-      row.querySelector(".loop").addEventListener("click", function () {
-        var cur = state.get(el.id);
-        roomRef.child(el.id).update({ loop: cur && cur.loop === false ? true : false });
-      });
-    }
-
-    row.querySelector(".eye").addEventListener("click", function () {
-      var cur = state.get(el.id);
-      var nextVisible = cur && cur.visible === false;
-      roomRef.child(el.id).update({ visible: nextVisible });
-      if (!nextVisible) {
-        var node = nodes.get(el.id);
-        if (node) {
-          var media = node.querySelector("video, audio");
-          if (media) media.pause();
-        }
-      }
-    });
-
-    row.querySelector(".front").addEventListener("click", function () { bringToFront(el.id); });
-    row.querySelector(".edit").addEventListener("click", function () { startEditing(el.id); });
-    row.querySelector(".danger").addEventListener("click", function () {
-      roomRef.child(el.id).remove();
-    });
-
-    listEl.appendChild(row);
-    rows.set(el.id, row);
-  }
-
-  /* Actualizar iconos segun estado */
-  var eyeBtn = row.querySelector(".eye");
-  if (eyeBtn) {
-    eyeBtn.textContent = el.visible !== false ? "◉" : "○";
-    eyeBtn.classList.toggle("on", el.visible !== false);
-  }
-  var playBtn = row.querySelector(".play");
-  if (playBtn) {
-    playBtn.textContent = el.playing !== false ? "⏸" : "▶";
-    playBtn.classList.toggle("on", el.playing !== false);
-  }
-  var loopBtn = row.querySelector(".loop");
-  if (loopBtn) {
-    loopBtn.textContent = el.loop !== false ? "🔁" : "➡";
-    loopBtn.classList.toggle("on", el.loop !== false);
-  }
-  var nameSpan = row.querySelector(".name");
-  if (nameSpan) {
-    nameSpan.textContent = el.type === "text" ? (el.content || "").slice(0, 12) : nameFromUrl(el.url || "");
-  }
-  var layerBadge = row.querySelector(".layer-badge");
-  if (layerBadge) {
-    layerBadge.textContent = el.z || 0;
-  }
-
-  row.classList.toggle("off", el.visible === false);
-}
-
-function updateCount() {
-  countEl.textContent = state.size;
-  emptyMsg.style.display = state.size === 0 ? "block" : "none";
-}
-
-/* ================================================================
- *  Tabs
- * ================================================================ */
-document.querySelectorAll(".tab").forEach(function (tab) {
-  tab.addEventListener("click", function () {
-    document.querySelectorAll(".tab").forEach(function (t) { t.classList.remove("active"); });
-    document.querySelectorAll(".tab-body").forEach(function (b) { b.classList.remove("active"); });
-    this.classList.add("active");
-    document.getElementById("tab-" + this.dataset.tab).classList.add("active");
+/* === Tabs === */
+document.querySelectorAll(".tab").forEach(function(t){
+  t.addEventListener("click", function(){
+    document.querySelectorAll(".tab").forEach(function(x){x.classList.remove("active")});
+    document.querySelectorAll(".tab-body").forEach(function(x){x.classList.remove("active")});
+    t.classList.add("active");
+    document.getElementById(t.dataset.tab).classList.add("active");
   });
 });
 
-/* ================================================================
- *  Agregar por URL
- * ================================================================ */
-addUrlBtn.addEventListener("click", function () {
-  var url = urlInput.value.trim();
-  if (!url) { urlInput.focus(); return; }
-  pushElement(detectType(url), { url: url });
-  urlInput.value = ""; typeHint.textContent = "---"; urlInput.focus();
-});
-
-urlInput.addEventListener("input", function () {
-  var v = this.value.trim();
-  typeHint.textContent = v ? detectType(v).charAt(0).toUpperCase() + detectType(v).slice(1) : "---";
-});
-urlInput.addEventListener("keydown", function (e) { if (e.key === "Enter") addUrlBtn.click(); });
-
-/* ================================================================
- *  Subir archivo desde PC → Firebase Storage
- * ================================================================ */
-dropZone.addEventListener("click", function () { fileInput.click(); });
-dropZone.addEventListener("dragover", function (e) { e.preventDefault(); this.classList.add("dragover"); });
-dropZone.addEventListener("dragleave", function () { this.classList.remove("dragover"); });
-dropZone.addEventListener("drop", function (e) {
-  e.preventDefault(); this.classList.remove("dragover");
-  handleFiles(e.dataTransfer.files);
-});
-fileInput.addEventListener("change", function () { handleFiles(this.files); this.value = ""; });
-
-function handleFiles(files) {
-  Array.from(files).forEach(function (file) {
-    var item = document.createElement("div");
-    item.className = "upload-item";
-    item.innerHTML = '<span>' + file.name.slice(0, 20) + '</span><span class="pending">Subiendo...</span>';
-    uploadList.prepend(item);
-
-    var path = STREAM_ID + "/" + Date.now() + "_" + file.name;
-
-    sb.storage.from("wasa").upload(path, file, { upsert: true }).then(function (res) {
-      if (res.error) {
-        item.querySelector("span:last-child").className = "fail";
-        item.querySelector("span:last-child").textContent = "Se rompio: " + res.error.message;
-        return;
-      }
-      var pub = sb.storage.from("wasa").getPublicUrl(path).data.publicUrl;
-      var type = detectType(file.name);
-      pushElement(type, { url: pub });
-      item.querySelector("span:last-child").className = "ok";
-      item.querySelector("span:last-child").textContent = "Listo pa usar";
-    });
-  });
-}
-
-/* ================================================================
- *  Agregar texto
- * ================================================================ */
-addTextBtn.addEventListener("click", function () {
-  var content = textInput.value.trim();
-  if (!content) { textInput.focus(); return; }
-
-  pushElement("text", {
-    content: content,
-    fontSize: parseInt(document.getElementById("text-size").value) || 48,
-    fontColor: document.getElementById("text-color").value || "#ffffff",
-    fontFamily: document.getElementById("text-font").value || "Arial, sans-serif",
-    bgColor: document.getElementById("text-bg").value || "#000000",
-    bgOpacity: parseInt(document.getElementById("text-bg-opacity").value) || 0,
-    bold: document.getElementById("text-bold").checked,
-    italic: document.getElementById("text-italic").checked
-  });
-
-  textInput.value = "";
-});
-
-textInput.addEventListener("keydown", function (e) { if (e.key === "Enter") addTextBtn.click(); });
-
-/* ================================================================
- *  Pegar imagen del portapapeles (Ctrl+V)
- * ================================================================ */
-document.addEventListener("paste", function (e) {
-  var items = e.clipboardData && e.clipboardData.items;
-  if (!items) return;
-  for (var i = 0; i < items.length; i++) {
-    if (items[i].type.indexOf("image") !== -1) {
-      var file = items[i].getAsFile();
-      if (file) handleFiles([file]);
-      break;
-    }
-  }
-});
-
-/* ================================================================
- *  Helper: crear elemento en Firebase
- * ================================================================ */
-function pushElement(type, extra) {
+/* === Add URL === */
+document.getElementById("addUrl").addEventListener("click", function(){
+  var u = document.getElementById("urlIn").value.trim();
+  if(!u) return;
+  var t = detectType(u);
+  if(!t){ alert("No se pudo detectar tipo"); return; }
   var id = roomRef.push().key;
-  var defaults = { image: { w: 0.25, h: 0.25 }, video: { w: 0.35, h: 0.35 }, audio: { w: 0.15, h: 0.06 }, text: { w: 0.30, h: 0.08 } };
-  var sz = defaults[type] || defaults.image;
-
-  var data = {
-    id: id,
-    type: type,
-    url: extra.url || "",
-    x: r4(0.5 - sz.w / 2),
-    y: r4(0.5 - sz.h / 2),
-    w: r4(sz.w),
-    h: r4(sz.h),
-    visible: true,
-    playing: true,
-    loop: type === "video" ? true : false,
-    volume: 0.8,
-    z: ++zTop,
-    createdAt: Date.now()
-  };
-
-  if (type === "text") {
-    data.content = extra.content || "";
-    data.fontSize = extra.fontSize || 48;
-    data.fontColor = extra.fontColor || "#ffffff";
-    data.fontFamily = extra.fontFamily || "Arial, sans-serif";
-    data.bgColor = extra.bgColor || "#000000";
-    data.bgOpacity = extra.bgOpacity || 0;
-    data.bold = extra.bold || false;
-    data.italic = extra.italic || false;
-  }
-
-  roomRef.child(id).set(data);
-}
-
-/* ================================================================
- *  Acciones globales
- * ================================================================ */
-hideAllBtn.addEventListener("click", function () {
-  var u = {}; state.forEach(function (el, id) { u[id + "/visible"] = false; });
-  if (Object.keys(u).length) roomRef.update(u);
+  var base = {type:t,x:0.1,y:0.1,w:0.30,h:0.08,z:Date.now(),opacity:100,visible:true,name:shortName(u),locked:false};
+  if(t==="text") base = Object.assign(base,{text:u,fontSize:48,bold:false,italic:false,txtColor:"#ffffff",bgType:"none",bgColor:"#000000",bgOpacity:60});
+  else if(t==="image") base = Object.assign(base,{objectFit:"fill"});
+  else if(t==="audio") base = Object.assign(base,{volume:100,loop:false});
+  else if(t==="video") base = Object.assign(base,{volume:100,loop:false,objectFit:"fill"});
+  roomRef.child(id).set(base);
+  document.getElementById("urlIn").value = "";
 });
 
-showAllBtn.addEventListener("click", function () {
-  var u = {}; state.forEach(function (el, id) { u[id + "/visible"] = true; });
-  if (Object.keys(u).length) roomRef.update(u);
+/* === Add Text === */
+document.getElementById("addTxt").addEventListener("click", function(){
+  var txt = document.getElementById("txtIn").value.trim();
+  if(!txt){alert("Escribe algo");return}
+  var id = roomRef.push().key;
+  roomRef.child(id).set({
+    type:"text",x:0.1,y:0.1,w:0.30,h:0.08,z:Date.now(),opacity:100,visible:true,name:shortName(txt),locked:false,
+    text:txt,fontSize:parseInt(document.getElementById("selSz").value)||48,
+    bold:document.getElementById("txtBold").checked,italic:document.getElementById("txtItalic").checked,
+    txtColor:document.getElementById("txtCol").value,
+    bgType:document.getElementById("selBg").value,bgColor:document.getElementById("txtBgCol").value,bgOpacity:parseInt(document.getElementById("txtBgOp").value)||60
+  });
+  document.getElementById("txtIn").value="";
 });
 
-clearAllBtn.addEventListener("click", function () {
-  if (confirm("Queres borrar TODO del stream? No hay vuelta atras eh")) roomRef.remove();
-});
+/* === File Upload === */
+var dropZone = document.getElementById("drop-zone");
+var fileIn = document.getElementById("fileIn");
+dropZone.addEventListener("click", function(){fileIn.click()});
+dropZone.addEventListener("dragover", function(e){e.preventDefault();dropZone.classList.add("dragover")});
+dropZone.addEventListener("dragleave", function(){dropZone.classList.remove("dragover")});
+dropZone.addEventListener("drop", function(e){e.preventDefault();dropZone.classList.remove("dragover");handleFiles(e.dataTransfer.files)});
+fileIn.addEventListener("change", function(){handleFiles(fileIn.files)});
 
-/* ================================================================
- *  Editar elemento existente
- * ================================================================ */
-var addSection = document.getElementById("add-section");
-var editSection = document.getElementById("edit-section");
-
-function startEditing(id) {
-  var el = state.get(id);
-  if (!el) return;
-  editingId = id;
-  editSection.style.display = "";
-
-  if (el.type === "text") {
-    document.getElementById("edit-url-fields").style.display = "none";
-    document.getElementById("edit-text-fields").style.display = "";
-    document.getElementById("edit-text-input").value = el.content || "";
-    document.getElementById("edit-text-size").value = el.fontSize || 48;
-    document.getElementById("edit-text-color").value = el.fontColor || "#ffffff";
-    document.getElementById("edit-text-font").value = el.fontFamily || "Arial, sans-serif";
-    document.getElementById("edit-text-bg").value = el.bgColor || "#000000";
-    document.getElementById("edit-text-bg-opacity").value = el.bgOpacity || 0;
-    document.getElementById("edit-text-bold").checked = el.bold || false;
-    document.getElementById("edit-text-italic").checked = el.italic || false;
-  } else {
-    document.getElementById("edit-text-fields").style.display = "none";
-    document.getElementById("edit-url-fields").style.display = "";
-    document.getElementById("edit-url-input").value = el.url || "";
-  }
-
-  document.getElementById("edit-x").value = Math.round(el.x * 1000) / 10;
-  document.getElementById("edit-y").value = Math.round(el.y * 1000) / 10;
-  document.getElementById("edit-w").value = Math.round(el.w * 1000) / 10;
-  document.getElementById("edit-h").value = Math.round(el.h * 1000) / 10;
-  document.getElementById("edit-opacity").value = el.opacity != null ? el.opacity : 100;
-  document.getElementById("edit-opacity-val").textContent = (el.opacity != null ? el.opacity : 100);
-}
-
-function stopEditing() {
-  editingId = null;
-  editSection.style.display = "none";
-}
-
-document.getElementById("edit-save").addEventListener("click", function () {
-  if (!editingId) return;
-  var el = state.get(editingId);
-  if (!el) { stopEditing(); return; }
-
-  var updates = {};
-
-  if (el.type === "text") {
-    updates.content = document.getElementById("edit-text-input").value;
-    updates.fontSize = parseInt(document.getElementById("edit-text-size").value) || 48;
-    updates.fontFamily = document.getElementById("edit-text-font").value;
-    updates.bgColor = document.getElementById("edit-text-bg").value;
-    updates.bgOpacity = parseInt(document.getElementById("edit-text-bg-opacity").value) || 0;
-    updates.bold = document.getElementById("edit-text-bold").checked;
-    updates.italic = document.getElementById("edit-text-italic").checked;
-  } else {
-    var newUrl = document.getElementById("edit-url-input").value.trim();
-    if (newUrl) {
-      updates.url = newUrl;
-      updates.type = detectType(newUrl);
+async function handleFiles(files){
+  var ul = document.getElementById("upload-list");
+  for(var i=0;i<files.length;i++){
+    var f = files[i];
+    var it = document.createElement("div");
+    it.className="upload-item";
+    it.innerHTML="<span>"+esc(f.name)+"</span><span class='ok'>...</span>";
+    ul.prepend(it);
+    try{
+      var ext = f.name.split(".").pop().toLowerCase();
+      var path = STREAM_ID+"/"+Date.now()+"_"+Math.random().toString(36).slice(2,8)+"."+ext;
+      var up = await supabase.storage.from(BUCKET).upload(path, f, {cacheControl:"3600",upsert:false});
+      if(up.error) throw up.error;
+      var pub = SB_URL+"/storage/v1/object/public/"+BUCKET+"/"+path;
+      var t = f.type.startsWith("video")?"video":f.type.startsWith("audio")?"audio":"image";
+      var id = roomRef.push().key;
+      var base = {type:t,x:0.1,y:0.1,w:0.30,h:0.08,z:Date.now(),url:pub,name:shortName(f.name),opacity:100,visible:true,locked:false};
+      if(t==="audio") base = Object.assign(base,{volume:100,loop:false});
+      if(t==="video") base = Object.assign(base,{volume:100,loop:false,objectFit:"fill"});
+      if(t==="image") base = Object.assign(base,{objectFit:"fill"});
+      roomRef.child(id).set(base);
+      it.querySelector("span:last-child").className="ok";
+      it.querySelector("span:last-child").textContent="Listo";
+    }catch(e){
+      it.querySelector("span:last-child").className="fail";
+      it.querySelector("span:last-child").textContent="Error";
+      console.error(e);
     }
   }
+}
 
-  updates.x = r4(clamp(parseFloat(document.getElementById("edit-x").value) / 100, 0, 0.98));
-  updates.y = r4(clamp(parseFloat(document.getElementById("edit-y").value) / 100, 0, 0.98));
-  updates.w = r4(clamp(parseFloat(document.getElementById("edit-w").value) / 100, 0.02, 1));
-  updates.h = r4(clamp(parseFloat(document.getElementById("edit-h").value) / 100, 0.02, 1));
-  updates.opacity = clamp(parseInt(document.getElementById("edit-opacity").value) || 100, 0, 100);
-
-  roomRef.child(editingId).update(updates);
-  stopEditing();
+/* === Listen === */
+roomRef.on("value", function(snap){
+  state = snap.val()||{};
+  render();
 });
 
-document.getElementById("edit-opacity").addEventListener("input", function () {
-  document.getElementById("edit-opacity-val").textContent = this.value;
-});
+function render(){
+  var keys = Object.keys(state);
+  keys.sort(function(a,b){return(state[a].z||0)-(state[b].z||0)});
+  countEl.textContent = keys.length;
+  emptyEl.style.display = keys.length?"none":"block";
 
-document.getElementById("edit-cancel").addEventListener("click", stopEditing);
+  var seen = {};
+  keys.forEach(function(id){seen[id]=1; upsertEl(id,state[id])});
+  canvas.querySelectorAll(".el").forEach(function(d){if(!seen[d.dataset.id])d.remove()});
 
-/* ================================================================
- *  Listener Firebase
- * ================================================================ */
-roomRef.on("value", function (snap) {
-  var val = snap.val() || {};
-  var ids = new Set(Object.keys(val));
+  renderList(keys);
+}
 
-  var toRemove = [];
-  nodes.forEach(function (_, id) { if (!ids.has(id)) toRemove.push(id); });
-  toRemove.forEach(removeNode);
+function upsertEl(id, el){
+  var d = canvas.querySelector('[data-id="'+id+'"]');
+  if(!d){d=mkDiv(el);d.dataset.id=id;canvas.appendChild(d)}
+  d.className = "el"+(el.visible===false?" hidden-el":"")+(el.type==="audio"?" is-audio":"")+(el.type==="text"?" is-text":"");
+  if(el.locked){d.style.pointerEvents="none";d.querySelector(".media-wrap").style.cursor="default"}
+  else{d.style.pointerEvents="";d.querySelector(".media-wrap").style.cursor="move"}
+  POS_MAP[id] = {x:el.x,y:el.y,w:el.w,h:el.h};
+  d.style.left = (el.x*100)+"%";
+  d.style.top = (el.y*100)+"%";
+  d.style.width = (el.w*100)+"%";
+  d.style.height = (el.h*100)+"%";
+  d.style.opacity = (el.opacity!=null?el.opacity:100)/100;
+  var wrap = d.querySelector(".media-wrap");
 
-  var maxZ = 0;
-  for (var id in val) {
-    var el = val[id];
-    state.set(id, el);
-    renderNode(el);
-    renderRow(el);
-    if ((el.z || 0) > maxZ) maxZ = el.z || 0;
+  if(el.type==="text"){
+    wrap.style.background = el.bgType==="solid" ? ("rgba("+hexToRgb(el.bgColor)+","+(el.bgOpacity||0)/100+")") : "transparent";
+    wrap.style.color = el.txtColor||"#fff";
+    wrap.style.fontWeight = el.bold?"bold":"normal";
+    wrap.style.fontStyle = el.italic?"italic":"normal";
+    wrap.style.fontSize = (el.fontSize||48)+"px";
+    wrap.style.lineHeight = "1.1";
+    wrap.style.webkitTextStroke = "3px #000000";
+    wrap.style.textShadow = "2px 2px 4px #000";
+    wrap.innerHTML = '<span>'+esc(el.text||"")+'</span>';
+  } else if(el.type==="audio"){
+    wrap.innerHTML='<div class="audio-badge">&#127925;</div>';
+  } else {
+    var tag = d.querySelector(".tag");
+    if(tag) tag.textContent = el.name||"";
+    var src = el.url||"";
+    if(el.type==="image"){
+      var img = wrap.querySelector("img");
+      if(!img){img=document.createElement("img");wrap.appendChild(img)}
+      img.src = src;
+    } else {
+      var vid = wrap.querySelector("video");
+      if(!vid){vid=document.createElement("video");vid.muted=false;wrap.appendChild(vid)}
+      vid.src = src;
+      vid.loop = !!el.loop;
+      vid.volume = (el.volume||100)/100;
+      vid.objectFit = el.objectFit||"fill";
+      try{
+        if(el.visible===false){vid.pause()}
+        else if(vid.paused && vid.src){vid.play().catch(function(){})}
+      }catch(e){}
+    }
   }
-  zTop = maxZ;
-  updateCount();
+  var tag2 = d.querySelector(".tag");
+  if(tag2 && el.type!=="image") tag2.style.display="none";
+}
+
+function mkDiv(el){
+  var d = document.createElement("div");
+  d.innerHTML='<div class="media-wrap"><span class="tag">'+esc(el.name||"")+'</span></div>';
+  return d;
+}
+
+/* === interact.js === */
+interact("#canvas .el").draggable({
+  listeners:{move:function(e){
+    var id=e.target.dataset.id;if(!id||!state[id]||state[id].locked)return;
+    var r=canvas.getBoundingClientRect();
+    var dx=e.dx/r.width,dy=e.dy/r.height;
+    var nx=(POS_MAP[id].x||0)+dx,ny=(POS_MAP[id].y||0)+dy;
+    var nw=POS_MAP[id].w||0.3,nh=POS_MAP[id].h||0.08;
+    nx=Math.max(0,Math.min(1-nw,nx));ny=Math.max(0,Math.min(1-nh,ny));
+    POS_MAP[id].x=nx;POS_MAP[id].y=ny;
+    e.target.style.left=(nx*100)+"%";e.target.style.top=(ny*100)+"%";
+  },end:function(e){
+    var id=e.target.dataset.id;if(id&&POS_MAP[id])roomRef.child(id).update({x:POS_MAP[id].x,y:POS_MAP[id].y});
+  }}
+}).resizable({
+  edges:{left:".el .media-wrap",right:".el .media-wrap",bottom:".el .media-wrap",top:".el .media-wrap"},
+  listeners:{move:function(e){
+    var id=e.target.dataset.id;if(!id||!state[id]||state[id].locked)return;
+    var r=canvas.getBoundingClientRect();
+    var nw=Math.max(0.02,e.rect.width/r.width);
+    var nh=Math.max(0.02,e.rect.height/r.height);
+    var nx=(POS_MAP[id].x||0)+(e.dx/r.width);
+    var ny=(POS_MAP[id].y||0)+(e.dy/r.height);
+    nx=Math.max(0,Math.min(1-nw,nx));ny=Math.max(0,Math.min(1-nh,ny));
+    POS_MAP[id].x=nx;POS_MAP[id].y=ny;POS_MAP[id].w=nw;POS_MAP[id].h=nh;
+    e.target.style.left=(nx*100)+"%";e.target.style.top=(ny*100)+"%";
+    e.target.style.width=(nw*100)+"%";e.target.style.height=(nh*100)+"%";
+    e.target.classList.add("resizing");
+    if(editingId===id) syncEdit();
+  },end:function(e){
+    var id=e.target.dataset.id;e.target.classList.remove("resizing");
+    if(id&&POS_MAP[id])roomRef.child(id).update({x:POS_MAP[id].x,y:POS_MAP[id].y,w:POS_MAP[id].w,h:POS_MAP[id].h});
+  }}
 });
 
-roomRef.on("child_removed", function (snap) { removeNode(snap.key); });
+/* === List === */
+function renderList(keys){
+  var cur = {};
+  listEl.querySelectorAll(".row").forEach(function(r){cur[r.dataset.id]=r});
+  var prev = null;
+  keys.forEach(function(id){
+    var el=state[id],r=cur[id];
+    if(!r){r=mkRow(id,el);listEl.appendChild(r)}
+    upRow(r,id,el);
+    if(prev) listEl.appendChild(r); 
+    prev=r;
+  });
+  Object.keys(cur).forEach(function(id){if(!state[id])cur[id].remove()});
+}
 
-/* ── Conexion ── */
-db.ref(".info/connected").on("value", function (snap) {
-  var on = snap.val() === true;
-  connDot.classList.toggle("on", on);
-  connText.textContent = on ? "Conectado papu" : "Se cayo todo";
+function mkRow(id,el){
+  var r=document.createElement("div");
+  r.className="row";r.dataset.id=id;
+  r.innerHTML='<span class="r-icon"></span><span class="r-badge"></span><span class="r-name"></span><button class="ibtn eye-btn" title="Visibilidad"></button><button class="ibtn" title="Editar">&#9998;</button><button class="ibtn danger" title="Eliminar">&#10005;</button>';
+  r.addEventListener("click",function(e){
+    if(e.target.closest(".ibtn")) return;
+    document.querySelectorAll(".row.selected").forEach(function(x){x.classList.remove("selected")});
+    r.classList.add("selected"); selectedId=id; openEdit(id);
+  });
+  r.querySelector(".eye-btn").addEventListener("click",function(e){
+    e.stopPropagation();roomRef.child(id).update({visible:!(el.visible!==false)});
+  });
+  r.querySelectorAll(".ibtn")[1].addEventListener("click",function(e){e.stopPropagation();openEdit(id)});
+  r.querySelectorAll(".ibtn")[2].addEventListener("click",function(e){e.stopPropagation();roomRef.child(id).remove();if(editingId===id)closeEdit()});
+  return r;
+}
+
+function upRow(r,id,el){
+  var icon = el.type==="image"?"Img":el.type==="video"?"Vid":el.type==="audio"?"Aud":"Txt";
+  r.querySelector(".r-icon").textContent = icon;
+  r.querySelector(".r-name").textContent = el.name||id.slice(-6);
+  var eye = r.querySelector(".eye-btn");
+  eye.innerHTML = el.visible!==false?"&#128065;":"&#128064;";
+  eye.className = "ibtn eye-btn"+(el.visible!==false?" on":"");
+  var badge = r.querySelector(".r-badge");
+  badge.textContent = "#"+(el.z||0);
+  r.classList.toggle("off",el.visible===false);
+}
+
+/* === Toolbar === */
+document.getElementById("tb-add").addEventListener("click",function(){
+  document.querySelector('[data-tab="tab-url"]').click();
+  document.getElementById("urlIn").focus();
+});
+document.getElementById("tb-del").addEventListener("click",function(){
+  if(selectedId){roomRef.child(selectedId).remove();if(editingId===selectedId)closeEdit();selectedId=null}
+});
+document.getElementById("tb-up").addEventListener("click",function(){if(selectedId)bringToFront(selectedId)});
+document.getElementById("tb-down").addEventListener("click",function(){if(selectedId)sendToBack(selectedId)});
+
+function bringToFront(id){
+  var mx=0;Object.keys(state).forEach(function(k){if((state[k].z||0)>mx)mx=state[k].z||0});
+  roomRef.child(id).update({z:mx+1});
+}
+function sendToBack(id){
+  var mn=Infinity;Object.keys(state).forEach(function(k){if((state[k].z||0)<mn)mn=state[k].z||0});
+  roomRef.child(id).update({z:mn-1});
+}
+
+/* === Edit === */
+function openEdit(id){
+  editingId=id;
+  var el=state[id];if(!el)return;
+  editSec.style.display="";
+  edName.textContent=el.name||id.slice(-6);
+  var mf=document.getElementById("edit-media-fields");
+  var tf=document.getElementById("edit-text-fields");
+  mf.innerHTML="";tf.innerHTML="";
+  if(el.type==="text"){
+    tf.innerHTML='<div class="edit-group"><label>Texto</label><input type="text" id="ed-text" value="'+esc2(el.text||'')+'"></div><div class="grid2"><div class="edit-group"><label>Tamano</label><input type="number" id="ed-fontSize" value="'+(el.fontSize||48)+'" min="8" max="400"></div><div class="edit-group"><label>Color</label><input type="color" id="ed-txtColor" value="'+(el.txtColor||'#ffffff')+'"></div></div><div class="edit-group"><label>Fondo</label><select id="ed-bgType"><option value="none"'+(el.bgType!=="solid"?" selected":"")+">Ninguno</option><option value='solid'"+(el.bgType==="solid"?" selected":"")+">Solido</option></select></div><div class='grid2'><div class='edit-group'><label>Color fondo</label><input type='color' id='ed-bgColor' value='"+(el.bgColor||'#000000')+"'></div><div class='edit-group'><label>Opacidad fondo</label><input type='number' id='ed-bgOpacity' value='"+(el.bgOpacity||60)+"' min='0' max='100'></div></div><div class='check-row' style='margin-top:4px'><label><input type='checkbox' id='ed-bold'"+(el.bold?" checked":")+">Negrita</label><label><input type='checkbox' id='ed-italic'"+(el.italic?" checked":")+">Cursiva</label></div>";
+    setTimeout(function(){
+      bind("ed-text","text");bind("ed-fontSize","fontSize",true);bind("ed-txtColor","txtColor");
+      bind("ed-bgType","bgType");bind("ed-bgColor","bgColor");bind("ed-bgOpacity","bgOpacity",true);
+      var cb;
+      cb=document.getElementById("ed-bold");if(cb)cb.addEventListener("change",function(){roomRef.child(id).update({bold:cb.checked})});
+      cb=document.getElementById("ed-italic");if(cb)cb.addEventListener("change",function(){roomRef.child(id).update({italic:cb.checked})});
+    },0);
+  }
+  if(el.type==="audio"||el.type==="video"){
+    mf.innerHTML='<div class="edit-group"><label>Volumen</label><div style="display:flex;align-items:center;gap:6px"><input type="range" id="ed-volume" min="0" max="100" value="'+(el.volume!=null?el.volume:100)+'" style="flex:1"><span id="ed-volume-val" style="font-size:10px;width:28px;text-align:right">'+(el.volume!=null?el.volume:100)+'</span></div></div><div class="check-row" style="margin-top:4px"><label><input type="checkbox" id="ed-loop"'+(el.loop?" checked":")+">Loop</label></div>";
+    setTimeout(function(){
+      bindRange("ed-volume","volume");
+      var cb=document.getElementById("ed-loop");if(cb)cb.addEventListener("change",function(){roomRef.child(id).update({loop:cb.checked})});
+    },0);
+  }
+  document.getElementById("ed-opacity").value=el.opacity!=null?el.opacity:100;
+  document.getElementById("ed-opacity-val").textContent=el.opacity!=null?el.opacity:100;
+  document.getElementById("ed-opacity").onchange=function(){roomRef.child(id).update({opacity:parseInt(document.getElementById("ed-opacity").value)});document.getElementById("ed-opacity-val").textContent=document.getElementById("ed-opacity").value};
+  document.getElementById("ed-x").value=(el.x||0).toFixed(3);
+  document.getElementById("ed-y").value=(el.y||0).toFixed(3);
+  document.getElementById("ed-w").value=(el.w||0.3).toFixed(3);
+  document.getElementById("ed-h").value=(el.h||0.08).toFixed(3);
+  ["ed-x","ed-y","ed-w","ed-h"].forEach(function(k){
+    document.getElementById(k).onchange=function(){
+      var obj={};obj[k.replace("ed-","")]=parseFloat(document.getElementById(k).value);
+      roomRef.child(id).update(obj);
+    };
+  });
+  document.getElementById("ed-del").onclick=function(){roomRef.child(id).remove();closeEdit()};
+  document.querySelectorAll(".row.selected").forEach(function(r){r.classList.remove("selected")});
+  var row=listEl.querySelector('[data-id="'+id+'"]');if(row)row.classList.add("selected");
+}
+
+function closeEdit(){editingId=null;editSec.style.display="none"}
+
+function syncEdit(){
+  if(!editingId||!state[editingId])return;
+  var el=state[editingId];
+  document.getElementById("ed-x").value=(el.x||0).toFixed(3);
+  document.getElementById("ed-y").value=(el.y||0).toFixed(3);
+  document.getElementById("ed-w").value=(el.w||0.3).toFixed(3);
+  document.getElementById("ed-h").value=(el.h||0.08).toFixed(3);
+}
+
+function bind(eid,key,isNum){
+  var e=document.getElementById(eid);if(!e)return;
+  e.addEventListener("input",function(){var o={};o[key]=isNum?parseFloat(e.value):e.value;roomRef.child(editingId).update(o)});
+}
+function bindRange(eid,key){
+  var e=document.getElementById(eid);if(!e)return;
+  var sv=document.getElementById(eid+"-val");
+  e.addEventListener("input",function(){var v=parseInt(e.value);if(sv)sv.textContent=v;var o={};o[key]=v;roomRef.child(editingId).update(o)});
+}
+
+/* === Util === */
+function detectType(u){
+  var s=u.toLowerCase();
+  if(/\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)($|\?)/.test(s)||s.includes("imgur.com")||s.includes("images."))return"image";
+  if(/\.(mp4|webm|mov|mkv|avi)($|\?)/.test(s)||s.includes("youtube.com")||s.includes("vimeo.com"))return"video";
+  if(/\.(mp3|ogg|wav|flac|aac|opus)($|\?)/.test(s)||s.includes("soundcloud.com"))return"audio";
+  return null;
+}
+function shortName(n){return(n||"").split("/").pop().split("?")[0].substring(0,25)}
+function esc(s){var d=document.createElement("span");d.textContent=s;return d.innerHTML}
+function esc2(s){return s.replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}
+function hexToRgb(h){var r=parseInt(h.slice(1,3),16),g=parseInt(h.slice(3,5),16),b=parseInt(h.slice(5,7),16);return r+","+g+","+b}
+
+/* === Connection status === */
+var connRef = db.ref(".info/connected");
+connRef.on("value",function(snap){
+  var on=snap.val()===true;
+  dotEl.className="dot"+(on?" on":"");
+  connTxt.textContent=on?"Conectado papu":"Desconectado :(";
 });
