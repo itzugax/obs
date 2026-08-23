@@ -410,7 +410,7 @@ function handleFiles(files) {
       pushElement(type, { url: pub });
       item.querySelector("span:last-child").className = "ok";
       item.querySelector("span:last-child").textContent = "Listo pa usar";
-    }
+    });
   });
 }
 
