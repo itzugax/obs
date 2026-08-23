@@ -1,4 +1,4 @@
-/* === Control de UGAX - Panel === */
+/* === Control de UGAX - Panel de Moderación === */
 (function() {
 
   /* === State === */
@@ -10,9 +10,11 @@
   var db = null;
   var _interactingId = null;
   var _startState = null;
+  var _localAudio = null;
+  var streamId = "sala-stream-demo";
 
   /* === DOM refs === */
-  var canvas, listEl, emptyEl, countEl, editSec, edName, dotEl, connTxt;
+  var canvas, listEl, emptyEl, countEl, editSec, edTitleType, edNameInput, dotEl, connTxt, obsBadge, pingBadge;
 
   /* === Init on DOM ready === */
   if (document.readyState === "loading") {
@@ -22,20 +24,32 @@
   }
 
   function init() {
+    // Resolve Stream ID from URL or config
+    var urlParams = new URLSearchParams(window.location.search);
+    streamId = urlParams.get("room") || (typeof STREAM_ID !== "undefined" && STREAM_ID) || "sala-stream-demo";
+
     canvas = document.getElementById("canvas");
     listEl = document.getElementById("list");
     emptyEl = document.getElementById("empty-msg");
     countEl = document.getElementById("count");
     editSec = document.getElementById("edit-section");
-    edName = document.getElementById("ed-name");
+    edTitleType = document.getElementById("ed-title-type");
+    edNameInput = document.getElementById("ed-name-input");
     dotEl = document.getElementById("dot");
     connTxt = document.getElementById("conn-txt");
+    obsBadge = document.getElementById("obs-badge");
+    pingBadge = document.getElementById("ping-badge");
+
+    var streamLbl = document.getElementById("stream-label");
+    if (streamLbl) streamLbl.textContent = streamId;
 
     initTabs();
     initAddUrl();
     initAddText();
     initFileUpload();
     initToolbar();
+    initQuickActions();
+    initHeaderTools();
     initCanvasEvents();
     initKeyboardEvents();
     initServices();
@@ -43,10 +57,6 @@
 
   /* === Services (Firebase, Supabase, interact) === */
   function initServices() {
-    var streamId = (typeof STREAM_ID !== "undefined" && STREAM_ID) ? STREAM_ID : "sala-stream-demo";
-    var streamLbl = document.getElementById("stream-label");
-    if (streamLbl) streamLbl.textContent = streamId;
-
     /* Firebase */
     if (typeof firebase !== "undefined") {
       try {
@@ -71,18 +81,45 @@
           render();
         });
 
+        // Connection status & Latency monitor
         db.ref(".info/connected").on("value", function(snap) {
           var on = snap.val() === true;
           if (dotEl) dotEl.className = "dot" + (on ? " on" : "");
-          if (connTxt) connTxt.textContent = on ? "Conectado papu" : "Desconectado :(";
+          if (connTxt) connTxt.textContent = on ? "Conectado" : "Desconectado :(";
         });
+
+        // Latency ping
+        setInterval(function() {
+          if (!db) return;
+          var t0 = Date.now();
+          db.ref(".info/serverTimeOffset").once("value", function() {
+            var ping = Math.max(1, Math.round(Date.now() - t0));
+            if (pingBadge) pingBadge.textContent = ping + " ms";
+          });
+        }, 8000);
+
+        // OBS Presence listener
+        db.ref("streams/" + streamId + "/presence/obs").on("value", function(snap) {
+          var val = snap.val();
+          var isLive = val && (Date.now() - val < 12000);
+          if (obsBadge) {
+            if (isLive) {
+              obsBadge.className = "obs-badge online";
+              obsBadge.innerHTML = "&#128225; OBS: En Vivo";
+            } else {
+              obsBadge.className = "obs-badge";
+              obsBadge.innerHTML = "&#128225; OBS: Sin cliente";
+            }
+          }
+        });
+
       } catch (e) {
         console.error("Firebase init error:", e);
         if (connTxt) connTxt.textContent = "Error Firebase";
       }
     } else {
       console.warn("Firebase SDK not loaded");
-      if (connTxt) connTxt.textContent = "Sin Firebase — solo interfaz";
+      if (connTxt) connTxt.textContent = "Sin Firebase";
     }
 
     /* Supabase */
@@ -103,6 +140,53 @@
       } catch (e) {
         console.warn("Interact init error:", e);
       }
+    }
+  }
+
+  /* === Header Tools === */
+  function initHeaderTools() {
+    var btnCopy = document.getElementById("btn-copy-obs");
+    if (btnCopy) {
+      btnCopy.addEventListener("click", function() {
+        var base = window.location.href.split("?")[0].replace("index.html", "");
+        if (!base.endsWith("/")) base += "/";
+        var obsUrl = base + "obs.html?room=" + encodeURIComponent(streamId);
+
+        navigator.clipboard.writeText(obsUrl).then(function() {
+          btnCopy.textContent = "\u2705 \u00A1Copiado!";
+          btnCopy.classList.add("copied");
+          setTimeout(function() {
+            btnCopy.innerHTML = "&#128203; Copiar Link OBS";
+            btnCopy.classList.remove("copied");
+          }, 2000);
+        }).catch(function() {
+          prompt("Copia este enlace para el Browser Source de OBS:", obsUrl);
+        });
+      });
+    }
+
+    var btnToggleAll = document.getElementById("btn-toggle-all");
+    if (btnToggleAll) {
+      btnToggleAll.addEventListener("click", function() {
+        if (!roomRef) return;
+        var keys = Object.keys(state);
+        if (!keys.length) return;
+        var hasVisible = keys.some(function(k) { return state[k].visible !== false; });
+        var targetVis = !hasVisible;
+        keys.forEach(function(k) {
+          roomRef.child(k).update({ visible: targetVis });
+        });
+      });
+    }
+
+    var btnClearAll = document.getElementById("btn-clear-all");
+    if (btnClearAll) {
+      btnClearAll.addEventListener("click", function() {
+        if (!confirm("\u00BFEst\u00E1s seguro de eliminar TODAS las capas del stream?")) return;
+        if (roomRef) roomRef.remove();
+        closeEdit();
+        selectedId = null;
+      });
     }
   }
 
@@ -131,7 +215,7 @@
       var u = document.getElementById("urlIn").value.trim();
       if (!u) { alert("Pega una URL primero"); return; }
       var t = detectType(u);
-      if (!t) { alert("No se pudo detectar tipo. Usa JPG, PNG, GIF, MP4, WEBM o MP3."); return; }
+      if (!t) { alert("No se pudo detectar tipo. Usa JPG, PNG, GIF, WEBP, MP4, WEBM o MP3."); return; }
       if (!roomRef) { alert("Sin conexión a Firebase. Recarga la página."); return; }
       var id = roomRef.push().key;
       var base = {
@@ -160,10 +244,13 @@
       var id = roomRef.push().key;
       roomRef.child(id).set({
         type: "text",
-        x: 0.1, y: 0.1, w: 0.40, h: 0.10,
+        x: 0.1, y: 0.1, w: 0.45, h: 0.12,
         z: Date.now(), opacity: 100, visible: true,
         name: shortName(txt), locked: false,
-        text: txt, fontSize: 56
+        text: txt, fontSize: 56,
+        textColor: "#ffffff", strokeColor: "#000000", strokeWidth: 5,
+        fontFamily: "'Comic Sans MS', 'Comic Sans', cursive",
+        bgType: "none", bgColor: "#000000", bgOpacity: 0
       });
       document.getElementById("txtIn").value = "";
       selectRow(id);
@@ -197,8 +284,6 @@
 
   function handleFiles(files) {
     var ul = document.getElementById("upload-list");
-    var streamId = (typeof STREAM_ID !== "undefined" && STREAM_ID) ? STREAM_ID : "sala-stream-demo";
-
     for (var i = 0; i < files.length; i++) {
       (function(f) {
         var it = document.createElement("div");
@@ -245,12 +330,85 @@
     }
   }
 
-  /* === Toolbar === */
+  /* === Quick Actions & Toolbar === */
+  function initQuickActions() {
+    var btnCenter = document.getElementById("qa-center");
+    if (btnCenter) {
+      btnCenter.addEventListener("click", function() {
+        if (!editingId || !state[editingId] || !roomRef) return;
+        var cur = POS_MAP[editingId] || state[editingId];
+        var w = cur.w || 0.3;
+        var h = cur.h || 0.08;
+        var nx = Math.max(0, (1 - w) / 2);
+        var ny = Math.max(0, (1 - h) / 2);
+        POS_MAP[editingId].x = nx;
+        POS_MAP[editingId].y = ny;
+        var cel = canvas.querySelector('[data-id="' + editingId + '"]');
+        if (cel) {
+          cel.style.left = (nx * 100) + "%";
+          cel.style.top = (ny * 100) + "%";
+        }
+        syncEdit();
+        roomRef.child(editingId).update({ x: nx, y: ny });
+      });
+    }
+
+    var btnFull = document.getElementById("qa-fullscreen");
+    if (btnFull) {
+      btnFull.addEventListener("click", function() {
+        if (!editingId || !state[editingId] || !roomRef) return;
+        POS_MAP[editingId] = { x: 0, y: 0, w: 1, h: 1 };
+        var cel = canvas.querySelector('[data-id="' + editingId + '"]');
+        if (cel) {
+          cel.style.left = "0%";
+          cel.style.top = "0%";
+          cel.style.width = "100%";
+          cel.style.height = "100%";
+        }
+        syncEdit();
+        roomRef.child(editingId).update({ x: 0, y: 0, w: 1, h: 1 });
+      });
+    }
+
+    var btnClone = document.getElementById("qa-clone");
+    if (btnClone) {
+      btnClone.addEventListener("click", function() {
+        if (!editingId || !state[editingId]) return;
+        duplicateLayer(editingId);
+      });
+    }
+
+    var btnLockToggle = document.getElementById("ed-lock-toggle");
+    if (btnLockToggle) {
+      btnLockToggle.addEventListener("click", function() {
+        if (!editingId || !state[editingId] || !roomRef) return;
+        var isLocked = state[editingId].locked === true;
+        roomRef.child(editingId).update({ locked: !isLocked });
+        btnLockToggle.innerHTML = isLocked ? "&#128274; Bloquear" : "&#128275; Desbloquear";
+      });
+    }
+  }
+
+  function duplicateLayer(id) {
+    if (!state[id] || !roomRef) return;
+    var orig = state[id];
+    var clone = JSON.parse(JSON.stringify(orig));
+    var newId = roomRef.push().key;
+    clone.x = Math.min(0.8, (clone.x || 0) + 0.04);
+    clone.y = Math.min(0.8, (clone.y || 0) + 0.04);
+    clone.z = Date.now();
+    clone.name = (clone.name || "Capa") + " (Copia)";
+    roomRef.child(newId).set(clone);
+    selectRow(newId);
+    openEdit(newId);
+  }
+
   function initToolbar() {
     var tbAdd = document.getElementById("tb-add");
     var tbDel = document.getElementById("tb-del");
     var tbUp = document.getElementById("tb-up");
     var tbDown = document.getElementById("tb-down");
+    var tbClone = document.getElementById("tb-clone");
 
     if (tbAdd) tbAdd.addEventListener("click", function() {
       var tab = document.querySelector('[data-tab="tab-url"]');
@@ -262,8 +420,9 @@
     if (tbDel) tbDel.addEventListener("click", function() {
       if (!selectedId) { alert("Selecciona una capa primero"); return; }
       if (confirm("¿Eliminar capa seleccionada?")) {
-        if (roomRef) roomRef.child(selectedId).remove();
-        if (editingId === selectedId) closeEdit();
+        var toDel = selectedId;
+        if (roomRef) roomRef.child(toDel).remove();
+        if (editingId === toDel) closeEdit();
         selectedId = null;
       }
     });
@@ -276,6 +435,11 @@
     if (tbDown) tbDown.addEventListener("click", function() {
       if (!selectedId) { alert("Selecciona una capa primero"); return; }
       sendToBack(selectedId);
+    });
+
+    if (tbClone) tbClone.addEventListener("click", function() {
+      if (!selectedId) { alert("Selecciona una capa primero"); return; }
+      duplicateLayer(selectedId);
     });
   }
 
@@ -313,7 +477,6 @@
           openEdit(id);
         }
       } else {
-        // Clicked outside elements
         selectRow(null);
         closeEdit();
       }
@@ -336,6 +499,9 @@
       } else if (e.key === "Escape") {
         selectRow(null);
         closeEdit();
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "d") {
+        e.preventDefault();
+        duplicateLayer(selectedId);
       } else if (e.key.startsWith("Arrow")) {
         e.preventDefault();
         var step = e.shiftKey ? 0.02 : 0.005;
@@ -374,7 +540,7 @@
     }, 25);
   }
 
-  /* === interact.js Setup with Anchor-based Resizing === */
+  /* === interact.js Setup === */
   function initInteract() {
     interact("#canvas .el")
       .draggable({
@@ -469,7 +635,6 @@
             var w = _startState.w;
             var h = _startState.h;
 
-            /* X & Width calculation */
             if (e.edges.right) {
               w = Math.max(minW, Math.min(1 - _startState.x, _startState.w + dx));
             } else if (e.edges.left) {
@@ -478,7 +643,6 @@
               x = newX;
             }
 
-            /* Y & Height calculation */
             if (e.edges.bottom) {
               h = Math.max(minH, Math.min(1 - _startState.y, _startState.h + dy));
             } else if (e.edges.top) {
@@ -487,7 +651,6 @@
               y = newY;
             }
 
-            /* Proportional Aspect Ratio when Shift is held on corners */
             var isCorner = (e.edges.left || e.edges.right) && (e.edges.top || e.edges.bottom);
             if (e.shiftKey && isCorner && _startState.aspect > 0) {
               var candidateH = w / _startState.aspect;
@@ -509,7 +672,6 @@
             e.target.style.width = (w * 100) + "%";
             e.target.style.height = (h * 100) + "%";
 
-            // If text element, update font size immediately during resize
             if (state[id] && state[id].type === "text") {
               updateTextSize(e.target, state[id], h);
             }
@@ -534,7 +696,7 @@
       });
   }
 
-  /* === Render Canvas Elements === */
+  /* === Render === */
   function render() {
     var keys = Object.keys(state);
     keys.sort(function(a, b) { return (state[a].z || 0) - (state[b].z || 0); });
@@ -567,10 +729,10 @@
     if (el.visible === false) cls += " hidden-el";
     if (el.type === "audio") cls += " is-audio";
     if (el.type === "text") cls += " is-text";
+    if (el.locked === true) cls += " locked";
     if (selectedId === id) cls += " selected";
     d.className = cls;
 
-    d.style.pointerEvents = el.locked ? "none" : "";
     POS_MAP[id] = { x: el.x, y: el.y, w: el.w, h: el.h };
     d.style.left = (el.x * 100) + "%";
     d.style.top = (el.y * 100) + "%";
@@ -580,7 +742,7 @@
     d.style.zIndex = el.z || 0;
 
     var tagEl = d.querySelector(".tag");
-    if (tagEl) tagEl.textContent = (el.type === "image" || el.type === "video") ? (el.name || "") : "";
+    if (tagEl) tagEl.textContent = el.name || "";
 
     var wrap = d.querySelector(".media-wrap");
     var txtEl = wrap.querySelector(".txt-content");
@@ -596,15 +758,15 @@
 
       var bgVal = "transparent";
       if (el.bgType === "solid" && el.bgColor) {
-        bgVal = "rgba(" + hexToRgb(el.bgColor) + "," + ((el.bgOpacity || 0) / 100) + ")";
+        bgVal = "rgba(" + hexToRgb(el.bgColor) + "," + ((el.bgOpacity != null ? el.bgOpacity : 100) / 100) + ")";
       }
       wrap.style.background = bgVal;
-      wrap.style.color = "#ffffff";
+      wrap.style.color = el.textColor || "#ffffff";
       wrap.style.fontWeight = "bold";
       wrap.style.fontStyle = "normal";
       wrap.style.lineHeight = "1.2";
       wrap.style.textShadow = "2px 2px 6px rgba(0,0,0,0.9)";
-      wrap.style.fontFamily = "'Comic Sans MS', 'Comic Sans', cursive";
+      wrap.style.fontFamily = el.fontFamily || "'Comic Sans MS', 'Comic Sans', cursive";
       wrap.style.paintOrder = "stroke fill";
       updateTextSize(d, el, el.h || 0.08);
       if (txtEl) txtEl.textContent = el.text || "";
@@ -631,6 +793,7 @@
         }
         imgEl.style.display = "";
         if (imgEl.src !== src) imgEl.src = src;
+        imgEl.style.objectFit = el.objectFit || "contain";
 
       } else if (el.type === "video") {
         if (imgEl) imgEl.style.display = "none";
@@ -659,17 +822,16 @@
     if (!wrap) return;
     var ch = canvas.clientHeight || 360;
     var baseFs = elData.fontSize || 56;
-    // Scale proportional to preview canvas height vs 1080p stream
     var scaledFs = (baseFs / 1080) * ch * ((hVal || 0.08) / 0.08);
     var dynFs = Math.max(8, Math.min(Math.round(scaledFs), 300));
     wrap.style.fontSize = dynFs + "px";
-    var strokeW = Math.max(1, Math.round(5 * (ch / 1080)));
-    wrap.style.webkitTextStroke = strokeW + "px #000000";
+    var strokeW = Math.max(1, Math.round((elData.strokeWidth != null ? elData.strokeWidth : 5) * (ch / 1080)));
+    wrap.style.webkitTextStroke = strokeW + "px " + (elData.strokeColor || "#000000");
   }
 
   function mkDiv(el) {
     var d = document.createElement("div");
-    var tagText = (el.type === "image" || el.type === "video") ? (el.name || "") : "";
+    var tagText = el.name || "";
     d.innerHTML =
       '<div class="resize-handle resize-nw" title="Redimensionar esquina"></div>' +
       '<div class="resize-handle resize-n" title="Redimensionar arriba"></div>' +
@@ -722,6 +884,7 @@
       '<span class="r-name"></span>' +
       '<span class="r-badge"></span>' +
       '<button class="ibtn eye-btn" title="Mostrar/Ocultar">&#128065;</button>' +
+      '<button class="ibtn lock-btn" title="Bloquear/Desbloquear">&#128275;</button>' +
       '<button class="ibtn edit-btn" title="Editar">&#9998;</button>' +
       '<button class="ibtn danger del-btn" title="Eliminar">&#10005;</button>';
 
@@ -736,6 +899,15 @@
       var cur = state[id];
       if (cur && roomRef) {
         roomRef.child(id).update({ visible: cur.visible === false });
+      }
+    });
+
+    r.querySelector(".lock-btn").addEventListener("click", function(e) {
+      e.stopPropagation();
+      var cur = state[id];
+      if (cur && roomRef) {
+        var isLocked = cur.locked === true;
+        roomRef.child(id).update({ locked: !isLocked });
       }
     });
 
@@ -772,6 +944,17 @@
       eye.className = "ibtn eye-btn";
     }
 
+    var lock = r.querySelector(".lock-btn");
+    if (el.locked === true) {
+      lock.innerHTML = "&#128274;";
+      lock.className = "ibtn lock-btn locked";
+      lock.title = "Desbloquear capa";
+    } else {
+      lock.innerHTML = "&#128275;";
+      lock.className = "ibtn lock-btn";
+      lock.title = "Bloquear capa";
+    }
+
     if (el.visible === false) r.classList.add("off");
     else r.classList.remove("off");
 
@@ -801,26 +984,109 @@
     var el = state[id];
     if (!el) return;
     editSec.style.display = "";
-    edName.textContent = el.name || id.slice(-6);
+
+    var typeNames = { image: "Imagen", video: "Video", audio: "Audio", text: "Texto" };
+    edTitleType.textContent = (typeNames[el.type] || "Capa");
+    edNameInput.value = el.name || "";
+    edNameInput.oninput = function() {
+      if (roomRef) roomRef.child(id).update({ name: edNameInput.value.trim() });
+    };
+
+    var btnLockToggle = document.getElementById("ed-lock-toggle");
+    if (btnLockToggle) {
+      btnLockToggle.innerHTML = el.locked === true ? "&#128275; Desbloquear" : "&#128274; Bloquear";
+    }
 
     var mf = document.getElementById("edit-media-fields");
     var tf = document.getElementById("edit-text-fields");
     mf.innerHTML = "";
     tf.innerHTML = "";
 
+    // Text specific edit fields
     if (el.type === "text") {
       tf.innerHTML =
         '<div class="edit-group"><label>Texto</label>' +
-        '<input type="text" id="ed-text" value="' + esc2(el.text || "") + '"></div>';
+        '<input type="text" id="ed-text" value="' + esc2(el.text || "") + '"></div>' +
+        '<div class="grid2">' +
+        '  <div class="edit-group"><label>Fuente</label>' +
+        '    <select id="ed-font">' +
+        '      <option value="\'Comic Sans MS\', \'Comic Sans\', cursive">Comic Sans</option>' +
+        '      <option value="Impact, Charcoal, sans-serif">Impact</option>' +
+        '      <option value="\'Arial Black\', Gadget, sans-serif">Arial Black</option>' +
+        '      <option value="\'Montserrat\', sans-serif">Montserrat</option>' +
+        '      <option value="\'Trebuchet MS\', sans-serif">Trebuchet MS</option>' +
+        '      <option value="\'Courier New\', monospace">Courier New</option>' +
+        '    </select>' +
+        '  </div>' +
+        '  <div class="edit-group"><label>Tamaño (' + (el.fontSize || 56) + 'px)</label>' +
+        '    <input type="range" id="ed-fontsize" min="16" max="140" value="' + (el.fontSize || 56) + '">' +
+        '  </div>' +
+        '</div>' +
+        '<div class="grid2">' +
+        '  <div class="edit-group"><label>Color Texto</label>' +
+        '    <input type="color" id="ed-textcolor" value="' + (el.textColor || "#ffffff") + '">' +
+        '  </div>' +
+        '  <div class="edit-group"><label>Color Borde</label>' +
+        '    <input type="color" id="ed-strokecolor" value="' + (el.strokeColor || "#000000") + '">' +
+        '  </div>' +
+        '</div>' +
+        '<div class="edit-group"><label>Fondo de Texto</label>' +
+        '  <div style="display:flex;gap:8px;align-items:center">' +
+        '    <select id="ed-bgtype" style="width:100px">' +
+        '      <option value="none"' + (el.bgType === "none" || !el.bgType ? " selected" : "") + '>Ninguno</option>' +
+        '      <option value="solid"' + (el.bgType === "solid" ? " selected" : "") + '>Sólido</option>' +
+        '    </select>' +
+        '    <input type="color" id="ed-bgcolor" value="' + (el.bgColor || "#000000") + '" style="flex:1">' +
+        '  </div>' +
+        '</div>';
 
       setTimeout(function() {
         bindInput("ed-text", "text");
+        var fontEl = document.getElementById("ed-font");
+        if (fontEl) {
+          fontEl.value = el.fontFamily || "'Comic Sans MS', 'Comic Sans', cursive";
+          fontEl.addEventListener("change", function() {
+            if (roomRef) roomRef.child(id).update({ fontFamily: fontEl.value });
+          });
+        }
+        var fsEl = document.getElementById("ed-fontsize");
+        if (fsEl) {
+          fsEl.addEventListener("input", function() {
+            var v = parseInt(fsEl.value);
+            if (roomRef) roomRef.child(id).update({ fontSize: v });
+          });
+        }
+        var tcEl = document.getElementById("ed-textcolor");
+        if (tcEl) {
+          tcEl.addEventListener("input", function() {
+            if (roomRef) roomRef.child(id).update({ textColor: tcEl.value });
+          });
+        }
+        var scEl = document.getElementById("ed-strokecolor");
+        if (scEl) {
+          scEl.addEventListener("input", function() {
+            if (roomRef) roomRef.child(id).update({ strokeColor: scEl.value });
+          });
+        }
+        var bgTypeEl = document.getElementById("ed-bgtype");
+        var bgColEl = document.getElementById("ed-bgcolor");
+        if (bgTypeEl && bgColEl) {
+          bgTypeEl.addEventListener("change", function() {
+            if (roomRef) roomRef.child(id).update({ bgType: bgTypeEl.value });
+          });
+          bgColEl.addEventListener("input", function() {
+            if (roomRef) roomRef.child(id).update({ bgColor: bgColEl.value, bgOpacity: 85 });
+          });
+        }
       }, 50);
     }
 
+    // Audio / Video specific edit fields (Replay Trigger & Volume)
     if (el.type === "audio" || el.type === "video") {
       mf.innerHTML =
-        '<div class="edit-group"><label>Volumen</label>' +
+        '<button class="replay-btn" id="btn-replay-stream">&#9654; Reproducir / Disparar en OBS</button>' +
+        (el.type === "audio" ? '<button class="btn" id="btn-local-preview" style="margin-bottom:8px">&#128266; Escuchar en Moderador</button>' : '') +
+        '<div class="edit-group"><label>Volumen (' + (el.volume != null ? el.volume : 100) + '%)</label>' +
         '<div style="display:flex;align-items:center;gap:8px">' +
         '<input type="range" id="ed-volume" min="0" max="100" value="' + (el.volume != null ? el.volume : 100) + '" style="flex:1">' +
         '<span id="ed-volume-val" style="font-size:12px;width:32px;text-align:right;font-weight:600">' + (el.volume != null ? el.volume : 100) + '</span>' +
@@ -833,15 +1099,38 @@
         if (loopEl) loopEl.addEventListener("change", function() {
           if (roomRef) roomRef.child(id).update({ loop: loopEl.checked });
         });
+
+        var replayBtn = document.getElementById("btn-replay-stream");
+        if (replayBtn) {
+          replayBtn.addEventListener("click", function() {
+            if (roomRef) roomRef.child(id).update({ playTrigger: Date.now(), visible: true });
+          });
+        }
+
+        var localBtn = document.getElementById("btn-local-preview");
+        if (localBtn) {
+          localBtn.addEventListener("click", function() {
+            if (_localAudio) { _localAudio.pause(); _localAudio = null; localBtn.innerHTML = "&#128266; Escuchar en Moderador"; return; }
+            if (!el.url) return;
+            _localAudio = new Audio(el.url);
+            _localAudio.volume = (el.volume != null ? el.volume : 100) / 100;
+            _localAudio.play();
+            localBtn.innerHTML = "&#9208; Pausar Audio";
+            _localAudio.onended = function() {
+              localBtn.innerHTML = "&#128266; Escuchar en Moderador";
+              _localAudio = null;
+            };
+          });
+        }
       }, 50);
     }
 
     document.getElementById("ed-opacity").value = el.opacity != null ? el.opacity : 100;
-    document.getElementById("ed-opacity-val").textContent = el.opacity != null ? el.opacity : 100;
+    document.getElementById("ed-opacity-val").textContent = (el.opacity != null ? el.opacity : 100) + "%";
     document.getElementById("ed-opacity").oninput = function() {
       var v = parseInt(document.getElementById("ed-opacity").value);
       if (roomRef) roomRef.child(id).update({ opacity: v });
-      document.getElementById("ed-opacity-val").textContent = v;
+      document.getElementById("ed-opacity-val").textContent = v + "%";
     };
 
     document.getElementById("ed-x").value = (el.x || 0).toFixed(3);
@@ -961,3 +1250,4 @@
   }
 
 })();
+

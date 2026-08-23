@@ -1,11 +1,13 @@
-/* === Control de UGAX - OBS Stream === */
+/* === Control de UGAX - OBS Stream Overlay === */
 (function() {
   var state = {};
   var _tid = null;
+  var _lastTriggers = {};
   var box = document.getElementById("stage") || document.getElementById("stream");
   if (!box) return;
 
-  var streamId = (typeof STREAM_ID !== "undefined" && STREAM_ID) ? STREAM_ID : "sala-stream-demo";
+  var urlParams = new URLSearchParams(window.location.search);
+  var streamId = urlParams.get("room") || (typeof STREAM_ID !== "undefined" && STREAM_ID) || "sala-stream-demo";
 
   /* Firebase */
   try {
@@ -23,14 +25,25 @@
       firebase.initializeApp(fbCfg);
     }
     var db = firebase.database();
+    
+    // Elements listener
     db.ref("streams/" + streamId + "/elements").on("value", function(snap) {
       state = snap.val() || {};
       clearTimeout(_tid);
-      _tid = setTimeout(renderAll, 40);
+      _tid = setTimeout(renderAll, 30);
     });
+
+    // OBS Presence Heartbeat
+    var presenceRef = db.ref("streams/" + streamId + "/presence/obs");
+    presenceRef.set(Date.now());
+    presenceRef.onDisconnect().remove();
+    setInterval(function() {
+      presenceRef.set(Date.now());
+    }, 5000);
+
   } catch (e) {
     console.error("Firebase error:", e);
-    box.innerHTML = '<div style="color:red;padding:20px;text-align:center">Error de conexion</div>';
+    box.innerHTML = '<div style="color:red;padding:20px;text-align:center">Error de conexion OBS</div>';
     return;
   }
 
@@ -49,12 +62,16 @@
         d.setAttribute("data-id", id);
         box.appendChild(d);
       }
-      updLayer(d, el);
+      updLayer(d, id, el);
     }
 
     var els = box.querySelectorAll("[data-id]");
     for (var i = 0; i < els.length; i++) {
-      if (!seen[els[i].getAttribute("data-id")]) els[i].remove();
+      var eid = els[i].getAttribute("data-id");
+      if (!seen[eid]) {
+        els[i].remove();
+        delete _lastTriggers[eid];
+      }
     }
   }
 
@@ -74,7 +91,7 @@
     return d;
   }
 
-  function updLayer(d, el) {
+  function updLayer(d, id, el) {
     d.style.left = (el.x * 100) + "%";
     d.style.top = (el.y * 100) + "%";
     d.style.width = (el.w * 100) + "%";
@@ -89,21 +106,22 @@
     if (el.type === "text") {
       var bgVal = "transparent";
       if (el.bgType === "solid" && el.bgColor) {
-        bgVal = "rgba(" + hexToRgb(el.bgColor) + "," + ((el.bgOpacity || 0) / 100) + ")";
+        bgVal = "rgba(" + hexToRgb(el.bgColor) + "," + ((el.bgOpacity != null ? el.bgOpacity : 100) / 100) + ")";
       }
       w.style.background = bgVal;
-      w.style.color = "#ffffff";
+      w.style.color = el.textColor || "#ffffff";
       w.style.fontWeight = "bold";
       w.style.fontStyle = "normal";
       w.style.lineHeight = "1.2";
       w.style.textShadow = "3px 3px 8px rgba(0,0,0,0.9)";
-      w.style.fontFamily = "'Comic Sans MS', 'Comic Sans', cursive";
+      w.style.fontFamily = el.fontFamily || "'Comic Sans MS', 'Comic Sans', cursive";
       w.style.paintOrder = "stroke fill";
       var baseFs = el.fontSize || 56;
       var hRatio = (el.h || 0.08) / 0.08;
       var dynFs = Math.max(8, Math.min(Math.round(baseFs * hRatio), 600));
       w.style.fontSize = dynFs + "px";
-      w.style.webkitTextStroke = "5px #000000";
+      var strokeW = (el.strokeWidth != null ? el.strokeWidth : 5);
+      w.style.webkitTextStroke = strokeW + "px " + (el.strokeColor || "#000000");
       w.style.display = "flex";
       w.style.alignItems = "center";
       w.style.justifyContent = "center";
@@ -116,7 +134,7 @@
       w.querySelector("span").textContent = el.text || "";
 
     } else if (el.type === "audio") {
-      w.style.display = "none"; // Audio is invisible in OBS overlay
+      w.style.display = "none";
       var aud = w.querySelector("audio");
       if (!aud) {
         aud = document.createElement("audio");
@@ -127,13 +145,23 @@
       if (aud.src !== src) aud.src = src;
       aud.loop = !!el.loop;
       aud.volume = (el.volume != null ? el.volume : 100) / 100;
-      try {
-        if (el.visible === false) {
-          if (!aud.paused) aud.pause();
-        } else if (aud.paused && aud.src) {
+
+      // Handle Replay Trigger
+      if (el.playTrigger && el.playTrigger !== _lastTriggers[id]) {
+        _lastTriggers[id] = el.playTrigger;
+        try {
+          aud.currentTime = 0;
           aud.play().catch(function() {});
-        }
-      } catch (e) {}
+        } catch (e) {}
+      } else {
+        try {
+          if (el.visible === false) {
+            if (!aud.paused) aud.pause();
+          } else if (aud.paused && aud.src && !aud.ended) {
+            aud.play().catch(function() {});
+          }
+        } catch (e) {}
+      }
 
     } else {
       var src = el.url || "";
@@ -167,13 +195,23 @@
         vid.loop = !!el.loop;
         vid.volume = (el.volume != null ? el.volume : 100) / 100;
         vid.style.objectFit = el.objectFit || "contain";
-        try {
-          if (el.visible === false) {
-            if (!vid.paused) vid.pause();
-          } else if (vid.paused && vid.src) {
+
+        // Handle Replay Trigger
+        if (el.playTrigger && el.playTrigger !== _lastTriggers[id]) {
+          _lastTriggers[id] = el.playTrigger;
+          try {
+            vid.currentTime = 0;
             vid.play().catch(function() {});
-          }
-        } catch (e) {}
+          } catch (e) {}
+        } else {
+          try {
+            if (el.visible === false) {
+              if (!vid.paused) vid.pause();
+            } else if (vid.paused && vid.src && !vid.ended) {
+              vid.play().catch(function() {});
+            }
+          } catch (e) {}
+        }
       }
     }
   }
