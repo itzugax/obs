@@ -79,7 +79,8 @@
           <span class="lobby-hint">El mismo código que uses en tu programa de streaming</span>
         </div>
 
-        <button type="submit" class="btn-kick-primary" id="btn-enter-room" disabled>ENTRAR AL PANEL</button>
+        <div id="lobby-error-box" class="lobby-error" style="display:none"></div>
+        <button type="submit" class="btn-kick-primary" id="btn-enter-room">ENTRAR AL PANEL</button>
       </form>
     </div>
   </div>
@@ -117,6 +118,7 @@
           <button class="tab active" data-tab="tab-arch">&#128193; Archivos</button>
           <button class="tab" data-tab="tab-url">&#128279; Linkaso</button>
           <button class="tab" data-tab="tab-txt">&#128196; Texto</button>
+          <button class="tab" data-tab="tab-widgets">&#129513; Widgets</button>
         </div>
 
         <!-- File Tab (Active Default) -->
@@ -142,10 +144,31 @@
         <div class="tab-body" id="tab-txt">
           <label>Qué quieres poner en pantalla</label>
           <input type="text" id="txtIn" placeholder="Escribe cualquier webada...">
-          <div class="hint">Letras bien potentes con borde negro Comic Sans</div>
+          <div class="hint">Letras bien potentes con borde negro y fuentes personalizables</div>
           <div style="display:flex;gap:6px;margin-top:8px">
             <button class="btn primary" id="addTxt" style="flex:1">&#10010; Tirar texto</button>
             <button class="btn btn-tts" id="addTts" style="flex:1" title="Poner en pantalla y leer con voz en el stream">&#128483; Tirar TTS (Voz)</button>
+          </div>
+        </div>
+
+        <!-- Widgets Tab (Reloj, Ticker, Marcos, etc) -->
+        <div class="tab-body" id="tab-widgets">
+          <div class="widget-section">
+            <label>🕒 Reloj / Temporizador</label>
+            <div style="display:flex;gap:6px;margin-bottom:12px">
+              <button class="btn" id="btnAddClock" style="flex:1;font-size:11px">&#128339; Reloj Digital</button>
+              <button class="btn" id="btnAddTimer" style="flex:1;font-size:11px">&#9201; Countdown (5m)</button>
+            </div>
+
+            <label>📰 Ticker / Marquee en Movimiento</label>
+            <input type="text" id="marqueeIn" placeholder="🔴 SÍGUEME EN KICK: @streamer | BIENVENIDOS..." style="margin-bottom:6px">
+            <button class="btn primary" id="btnAddMarquee" style="width:100%;margin-bottom:12px">&#10010; Tirar Marquee / Ticker</button>
+
+            <label>🔲 Marcos & Formas Decorativas</label>
+            <div style="display:flex;gap:6px">
+              <button class="btn" id="btnAddWebcamBox" style="flex:1;font-size:11px">&#127909; Marco Cámara</button>
+              <button class="btn" id="btnAddShapeBox" style="flex:1;font-size:11px">&#9645; Caja / Banner</button>
+            </div>
           </div>
         </div>
 

@@ -210,6 +210,76 @@
       if (!w.querySelector("span")) w.innerHTML = "<span></span>";
       w.querySelector("span").textContent = el.text || "";
 
+    } else if (el.type === "clock") {
+      d.style.overflow = "hidden";
+      w.style.overflow = "hidden";
+      w.style.width = "100%";
+      w.style.height = "100%";
+      w.style.boxSizing = "border-box";
+
+      var bgVal = "transparent";
+      if (el.bgColor) {
+        bgVal = "rgba(" + hexToRgb(el.bgColor) + "," + ((el.bgOpacity != null ? el.bgOpacity : 90) / 100) + ")";
+      }
+      w.style.background = bgVal;
+      w.style.color = el.textColor || "#53fc18";
+      w.style.border = (el.borderWidth || 1) + "px solid " + (el.borderColor || "#252a36");
+      w.style.borderRadius = (el.borderRadius || 8) + "px";
+      w.style.display = "flex";
+      w.style.alignItems = "center";
+      w.style.justifyContent = "center";
+      w.style.fontFamily = el.fontFamily || "'Orbitron', sans-serif";
+      w.style.fontWeight = "bold";
+      w.style.letterSpacing = "2px";
+      w.style.fontSize = Math.max(12, el.fontSize || 48) + "px";
+
+      if (!w.querySelector("span")) w.innerHTML = "<span></span>";
+      w.querySelector("span").textContent = formatClockTime(el);
+
+    } else if (el.type === "marquee") {
+      d.style.overflow = "hidden";
+      w.style.overflow = "hidden";
+      w.style.width = "100%";
+      w.style.height = "100%";
+      w.style.boxSizing = "border-box";
+
+      var bgVal = "transparent";
+      if (el.bgColor) {
+        bgVal = "rgba(" + hexToRgb(el.bgColor) + "," + ((el.bgOpacity != null ? el.bgOpacity : 90) / 100) + ")";
+      }
+      w.style.background = bgVal;
+      w.style.color = el.textColor || "#ffffff";
+      w.style.border = (el.borderWidth || 1) + "px solid " + (el.borderColor || "#252a36");
+      w.style.borderRadius = (el.borderRadius || 4) + "px";
+      w.style.display = "flex";
+      w.style.alignItems = "center";
+      w.style.fontFamily = el.fontFamily || "'Montserrat', sans-serif";
+      w.style.fontWeight = "bold";
+
+      var marq = w.querySelector(".marquee-track");
+      if (!marq) {
+        marq = document.createElement("div");
+        marq.className = "marquee-track";
+        w.appendChild(marq);
+      }
+      marq.style.fontSize = Math.max(12, el.fontSize || 28) + "px";
+      marq.style.animationDuration = (35 / (el.speed || 5)) + "s";
+      marq.textContent = el.text || "";
+
+    } else if (el.type === "box") {
+      w.style.width = "100%";
+      w.style.height = "100%";
+      w.style.boxSizing = "border-box";
+
+      var bgVal = "transparent";
+      if (el.bgColor) {
+        bgVal = "rgba(" + hexToRgb(el.bgColor) + "," + ((el.bgOpacity != null ? el.bgOpacity : 80) / 100) + ")";
+      }
+      w.style.background = bgVal;
+      w.style.border = (el.borderWidth != null ? el.borderWidth : 3) + "px solid " + (el.borderColor || "#53fc18");
+      w.style.borderRadius = (el.borderRadius != null ? el.borderRadius : 8) + "px";
+      w.style.boxShadow = (el.borderWidth > 0) ? "0 4px 14px rgba(0,0,0,0.5)" : "none";
+
     } else if (el.type === "audio") {
       w.style.display = "none";
       var aud = w.querySelector("audio");
@@ -292,6 +362,42 @@
       }
     }
   }
+
+  function formatClockTime(el) {
+    if (!el) return "--:--:--";
+    if (el.clockMode === "timer") {
+      var sec = el.timerSeconds || 300;
+      if (el.timerRunning && el.timerStartedAt) {
+        var elapsed = Math.floor((Date.now() - el.timerStartedAt) / 1000);
+        sec = Math.max(0, sec - elapsed);
+      }
+      var m = Math.floor(sec / 60);
+      var s = sec % 60;
+      return (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
+    } else {
+      var d = new Date();
+      var hh = d.getHours();
+      var mm = d.getMinutes();
+      var ss = d.getSeconds();
+      return (hh < 10 ? "0" : "") + hh + ":" + (mm < 10 ? "0" : "") + mm + ":" + (ss < 10 ? "0" : "") + ss;
+    }
+  }
+
+  // Stream live clock interval (updates live text on stream every second)
+  setInterval(function() {
+    var cKeys = Object.keys(state);
+    for (var i = 0; i < cKeys.length; i++) {
+      var id = cKeys[i];
+      var el = state[id];
+      if (el && el.type === "clock") {
+        var layerDiv = c.querySelector('[data-id="' + id + '"]');
+        if (layerDiv) {
+          var sp = layerDiv.querySelector("span");
+          if (sp) sp.textContent = formatClockTime(el);
+        }
+      }
+    }
+  }, 1000);
 
   function hexToRgb(h) {
     if (!h || h.length < 7) return "0,0,0";

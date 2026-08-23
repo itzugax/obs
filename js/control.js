@@ -65,11 +65,27 @@
     var inPin = document.getElementById("lobby-pin");
     var digits = Array.from(document.querySelectorAll(".room-digit"));
 
-    // Add error element
-    var lobbyCard = document.querySelector(".lobby-card");
-    var errEl = document.createElement("p");
-    errEl.className = "lobby-error";
-    if (lobbyCard && btnEnter) lobbyCard.appendChild(errEl);
+    // Add or link error element
+    var errEl = document.getElementById("lobby-error-box");
+    if (!errEl) {
+      var lobbyCard = document.querySelector(".lobby-card");
+      errEl = document.createElement("div");
+      errEl.id = "lobby-error-box";
+      errEl.className = "lobby-error";
+      errEl.style.display = "none";
+      if (lobbyCard && btnEnter) lobbyCard.insertBefore(errEl, btnEnter);
+    }
+
+    function showLobbyError(msg) {
+      if (errEl) {
+        errEl.textContent = msg;
+        errEl.style.display = "block";
+        errEl.classList.remove("auth-highlight-shake");
+        void errEl.offsetWidth;
+        errEl.classList.add("auth-highlight-shake");
+      }
+      showToast(msg, "error");
+    }
 
     // Initialize Social Auth (Google / Discord) & Modals
     initSocialAuth();
@@ -173,6 +189,7 @@
       }
       if (pinErrorText) pinErrorText.textContent = msg;
       if (btnVerifyPin) { btnVerifyPin.textContent = "VERIFICAR Y ENTRAR"; btnVerifyPin.disabled = false; }
+      showToast(msg, "error");
     }
 
     function closePinModal() {
@@ -187,12 +204,24 @@
     if (btnClosePin) btnClosePin.addEventListener("click", closePinModal);
 
     function attemptEnter() {
+      // 1. Check Auth first
+      if (!_currentUser.name || !_currentUser.photoURL) {
+        showLobbyError("🔒 Debes iniciar sesión con Discord o Google arriba para entrar.");
+        var authBox = document.querySelector(".google-auth-box");
+        if (authBox) {
+          authBox.classList.remove("auth-highlight-shake");
+          void authBox.offsetWidth;
+          authBox.classList.add("auth-highlight-shake");
+        }
+        return;
+      }
+
       var username = (inUser ? inUser.value.trim() : "").toLowerCase().replace(/[^a-z0-9_.-]/g, "") || _currentUser.name;
       var roomCode = digits.map(function(d) { return d.value; }).join("");
       var urlParamRoom = new URLSearchParams(window.location.search).get("room") || "";
 
       if (!username || username.length < 2) {
-        errEl.textContent = "El username debe tener al menos 2 caracteres";
+        showLobbyError("⚠️ El username debe tener al menos 2 caracteres");
         if (inUser) inUser.focus();
         return;
       }
@@ -202,15 +231,22 @@
       }
 
       if (!roomCode || (roomCode.length !== 6 && !urlParamRoom)) {
-        errEl.textContent = "El código de sala son 6 dígitos exactos";
-        if (digits[0]) digits[0].focus();
+        showLobbyError("⚠️ El código de sala son 6 dígitos exactos");
+        var firstEmpty = digits.find(function(d) { return !d.value; }) || digits[0];
+        if (firstEmpty) firstEmpty.focus();
+        var codeRow = document.getElementById("room-code-row");
+        if (codeRow) {
+          codeRow.classList.remove("auth-highlight-shake");
+          void codeRow.offsetWidth;
+          codeRow.classList.add("auth-highlight-shake");
+        }
         return;
       }
 
       var room = roomCode.startsWith("sala-") ? roomCode : ("sala-" + roomCode);
       btnEnter.textContent = "Verificando...";
       btnEnter.disabled = true;
-      errEl.textContent = "";
+      if (errEl) errEl.style.display = "none";
 
       var fbApp;
       try { fbApp = firebase.app(); } catch(e) {
@@ -224,7 +260,7 @@
           userRegRef.once("value", function(userSnap) {
             var regData = userSnap.val();
             if (regData && regData.uid && regData.uid !== _currentUser.uid) {
-              errEl.textContent = "❌ El username @" + username + " ya está en uso. Elige otro.";
+              showLobbyError("❌ El username @" + username + " ya está en uso. Elige otro.");
               btnEnter.textContent = "ENTRAR AL PANEL";
               btnEnter.disabled = false;
               if (inUser) inUser.focus();
@@ -369,8 +405,8 @@
     }
 
     function setFormUnlocked(unlocked) {
-      digits.forEach(function(d) { d.disabled = !unlocked; });
-      if (btnEnter) btnEnter.disabled = !unlocked;
+      digits.forEach(function(d) { d.disabled = false; });
+      if (btnEnter) btnEnter.disabled = false;
     }
 
     function showProfile() {
@@ -647,6 +683,7 @@
     initTabs();
     initAddUrl();
     initAddText();
+    initAddWidgets();
     initFileUpload();
     initToolbar();
     initQuickActions();
@@ -1186,6 +1223,194 @@
         doAddText();
       }
     });
+  }
+
+  /* === Clock formatting helper === */
+  function formatClockTime(el) {
+    if (!el) return "--:--:--";
+    if (el.clockMode === "timer") {
+      var sec = el.timerSeconds || 300;
+      if (el.timerRunning && el.timerStartedAt) {
+        var elapsed = Math.floor((Date.now() - el.timerStartedAt) / 1000);
+        sec = Math.max(0, sec - elapsed);
+      }
+      var m = Math.floor(sec / 60);
+      var s = sec % 60;
+      return (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
+    } else {
+      var d = new Date();
+      var hh = d.getHours();
+      var mm = d.getMinutes();
+      var ss = d.getSeconds();
+      return (hh < 10 ? "0" : "") + hh + ":" + (mm < 10 ? "0" : "") + mm + ":" + (ss < 10 ? "0" : "") + ss;
+    }
+  }
+
+  /* === Add Widgets (Clock, Marquee, Box, etc.) === */
+  function initAddWidgets() {
+    var btnClock = document.getElementById("btnAddClock");
+    var btnTimer = document.getElementById("btnAddTimer");
+    var btnMarquee = document.getElementById("btnAddMarquee");
+    var inMarquee = document.getElementById("marqueeIn");
+    var btnWebcamBox = document.getElementById("btnAddWebcamBox");
+    var btnShapeBox = document.getElementById("btnAddShapeBox");
+
+    if (btnClock) {
+      btnClock.addEventListener("click", function() {
+        if (!roomRef) { showToast("Sin conexión con el servidor.", "error"); return; }
+        var id = roomRef.push().key;
+        var author = _currentUser.name || localStorage.getItem("ugax_user") || "streamer";
+        roomRef.child(id).set({
+          type: "clock",
+          clockMode: "time",
+          x: 0.72, y: 0.04, w: 0.24, h: 0.08,
+          z: getNextZ(), opacity: 100, visible: true,
+          name: "🕒 Reloj Digital",
+          locked: false,
+          addedBy: author,
+          addedByPhoto: _currentUser.photoURL || localStorage.getItem("ugax_user_photo") || "",
+          textColor: "#53fc18",
+          bgColor: "#090c10",
+          bgOpacity: 90,
+          borderColor: "#252a36",
+          borderWidth: 1,
+          borderRadius: 8,
+          fontFamily: "'Orbitron', sans-serif",
+          fontSize: 48
+        });
+        selectRow(id);
+        openEdit(id);
+        showToast("Reloj digital agregado al stream 🕒", "success");
+      });
+    }
+
+    if (btnTimer) {
+      btnTimer.addEventListener("click", function() {
+        if (!roomRef) { showToast("Sin conexión con el servidor.", "error"); return; }
+        var id = roomRef.push().key;
+        var author = _currentUser.name || localStorage.getItem("ugax_user") || "streamer";
+        roomRef.child(id).set({
+          type: "clock",
+          clockMode: "timer",
+          timerSeconds: 300,
+          timerRunning: true,
+          timerStartedAt: Date.now(),
+          x: 0.38, y: 0.04, w: 0.24, h: 0.08,
+          z: getNextZ(), opacity: 100, visible: true,
+          name: "⏱️ Cuenta Regresiva",
+          locked: false,
+          addedBy: author,
+          addedByPhoto: _currentUser.photoURL || localStorage.getItem("ugax_user_photo") || "",
+          textColor: "#53fc18",
+          bgColor: "#090c10",
+          bgOpacity: 90,
+          borderColor: "#252a36",
+          borderWidth: 1,
+          borderRadius: 8,
+          fontFamily: "'Orbitron', sans-serif",
+          fontSize: 48
+        });
+        selectRow(id);
+        openEdit(id);
+        showToast("Cuenta regresiva de 5 min agregada ⏱️", "success");
+      });
+    }
+
+    if (btnMarquee) {
+      btnMarquee.addEventListener("click", function() {
+        if (!roomRef) { showToast("Sin conexión con el servidor.", "error"); return; }
+        var txt = (inMarquee && inMarquee.value.trim()) || "🔴 BIENVENIDOS AL STREAM | SÍGUEME EN KICK: @" + (_currentUser.name || "streamer") + " | ⭐ GRACIAS POR EL APOYO";
+        var id = roomRef.push().key;
+        var author = _currentUser.name || localStorage.getItem("ugax_user") || "streamer";
+        roomRef.child(id).set({
+          type: "marquee",
+          text: txt,
+          speed: 5,
+          x: 0.05, y: 0.90, w: 0.90, h: 0.06,
+          z: getNextZ(), opacity: 100, visible: true,
+          name: "📰 Ticker: " + txt.slice(0, 16) + "...",
+          locked: false,
+          addedBy: author,
+          addedByPhoto: _currentUser.photoURL || localStorage.getItem("ugax_user_photo") || "",
+          textColor: "#ffffff",
+          bgColor: "#0d1117",
+          bgOpacity: 90,
+          borderColor: "#252a36",
+          borderWidth: 1,
+          borderRadius: 4,
+          fontFamily: "'Montserrat', sans-serif",
+          fontSize: 26
+        });
+        if (inMarquee) inMarquee.value = "";
+        selectRow(id);
+        openEdit(id);
+        showToast("Ticker animado agregado al stream 📰", "success");
+      });
+    }
+
+    if (btnWebcamBox) {
+      btnWebcamBox.addEventListener("click", function() {
+        if (!roomRef) { showToast("Sin conexión con el servidor.", "error"); return; }
+        var id = roomRef.push().key;
+        var author = _currentUser.name || localStorage.getItem("ugax_user") || "streamer";
+        roomRef.child(id).set({
+          type: "box",
+          boxType: "frame",
+          x: 0.05, y: 0.05, w: 0.32, h: 0.32 * (9 / 16) * (16 / 9) * 0.56,
+          z: getNextZ(), opacity: 100, visible: true,
+          name: "🎥 Marco Webcam",
+          locked: false,
+          addedBy: author,
+          addedByPhoto: _currentUser.photoURL || localStorage.getItem("ugax_user_photo") || "",
+          bgColor: "#000000",
+          bgOpacity: 0,
+          borderColor: "#53fc18",
+          borderWidth: 4,
+          borderRadius: 8
+        });
+        selectRow(id);
+        openEdit(id);
+        showToast("Marco de cámara agregado 🎥", "success");
+      });
+    }
+
+    if (btnShapeBox) {
+      btnShapeBox.addEventListener("click", function() {
+        if (!roomRef) { showToast("Sin conexión con el servidor.", "error"); return; }
+        var id = roomRef.push().key;
+        var author = _currentUser.name || localStorage.getItem("ugax_user") || "streamer";
+        roomRef.child(id).set({
+          type: "box",
+          boxType: "solid",
+          x: 0.30, y: 0.35, w: 0.40, h: 0.20,
+          z: getNextZ(), opacity: 100, visible: true,
+          name: "🔲 Caja Banner",
+          locked: false,
+          addedBy: author,
+          addedByPhoto: _currentUser.photoURL || localStorage.getItem("ugax_user_photo") || "",
+          bgColor: "#12161f",
+          bgOpacity: 85,
+          borderColor: "#252a36",
+          borderWidth: 2,
+          borderRadius: 8
+        });
+        selectRow(id);
+        openEdit(id);
+        showToast("Caja decorativa agregada 🔲", "success");
+      });
+    }
+
+    // Single ticker loop for clock in panel
+    setInterval(function() {
+      var clockEls = canvas.querySelectorAll('.el[data-id]');
+      clockEls.forEach(function(cel) {
+        var cid = cel.getAttribute("data-id");
+        if (state[cid] && state[cid].type === "clock") {
+          var txtSpan = cel.querySelector(".txt-content");
+          if (txtSpan) txtSpan.textContent = formatClockTime(state[cid]);
+        }
+      });
+    }, 1000);
   }
 
   /* === File Upload === */
@@ -2009,6 +2234,75 @@
       updateTextSize(d, el, el.h || 0.08, el.w || 0.3);
       if (txtEl) txtEl.textContent = el.text || "";
 
+    } else if (el.type === "clock") {
+      if (txtEl) txtEl.style.display = "";
+      if (audEl) audEl.style.display = "none";
+      if (imgEl) imgEl.style.display = "none";
+      if (vidEl) vidEl.style.display = "none";
+
+      var bgVal = "transparent";
+      if (el.bgColor) {
+        bgVal = "rgba(" + hexToRgb(el.bgColor) + "," + ((el.bgOpacity != null ? el.bgOpacity : 90) / 100) + ")";
+      }
+      wrap.style.background = bgVal;
+      wrap.style.color = el.textColor || "#53fc18";
+      wrap.style.border = (el.borderWidth || 1) + "px solid " + (el.borderColor || "#252a36");
+      wrap.style.borderRadius = (el.borderRadius || 8) + "px";
+      wrap.style.display = "flex";
+      wrap.style.alignItems = "center";
+      wrap.style.justifyContent = "center";
+      wrap.style.fontFamily = el.fontFamily || "'Orbitron', sans-serif";
+      wrap.style.fontWeight = "bold";
+      wrap.style.letterSpacing = "1px";
+      updateTextSize(d, el, el.h || 0.08, el.w || 0.24);
+      if (txtEl) txtEl.textContent = formatClockTime(el);
+
+    } else if (el.type === "marquee") {
+      if (txtEl) txtEl.style.display = "none";
+      if (audEl) audEl.style.display = "none";
+      if (imgEl) imgEl.style.display = "none";
+      if (vidEl) vidEl.style.display = "none";
+
+      var bgVal = "transparent";
+      if (el.bgColor) {
+        bgVal = "rgba(" + hexToRgb(el.bgColor) + "," + ((el.bgOpacity != null ? el.bgOpacity : 90) / 100) + ")";
+      }
+      wrap.style.background = bgVal;
+      wrap.style.color = el.textColor || "#ffffff";
+      wrap.style.overflow = "hidden";
+      wrap.style.display = "flex";
+      wrap.style.alignItems = "center";
+      wrap.style.fontFamily = el.fontFamily || "'Montserrat', sans-serif";
+      wrap.style.fontWeight = "bold";
+      wrap.style.border = (el.borderWidth || 1) + "px solid " + (el.borderColor || "#252a36");
+      wrap.style.borderRadius = (el.borderRadius || 4) + "px";
+
+      var marqTrack = wrap.querySelector(".marquee-track");
+      if (!marqTrack) {
+        marqTrack = document.createElement("div");
+        marqTrack.className = "marquee-track";
+        wrap.appendChild(marqTrack);
+      }
+      marqTrack.style.animationDuration = (35 / (el.speed || 5)) + "s";
+      marqTrack.style.fontSize = Math.max(8, Math.round((el.fontSize || 26) * (ch / 1080))) + "px";
+      marqTrack.textContent = el.text || "";
+
+    } else if (el.type === "box") {
+      if (txtEl) txtEl.style.display = "none";
+      if (audEl) audEl.style.display = "none";
+      if (imgEl) imgEl.style.display = "none";
+      if (vidEl) vidEl.style.display = "none";
+
+      var bgVal = "transparent";
+      if (el.bgColor) {
+        bgVal = "rgba(" + hexToRgb(el.bgColor) + "," + ((el.bgOpacity != null ? el.bgOpacity : 80) / 100) + ")";
+      }
+      wrap.style.background = bgVal;
+      wrap.style.border = (el.borderWidth != null ? el.borderWidth : 3) + "px solid " + (el.borderColor || "#53fc18");
+      wrap.style.borderRadius = (el.borderRadius != null ? el.borderRadius : 8) + "px";
+      wrap.style.boxSizing = "border-box";
+      wrap.style.boxShadow = (el.borderWidth > 0) ? "0 4px 14px rgba(0,0,0,0.5)" : "none";
+
     } else if (el.type === "audio") {
       if (txtEl) txtEl.style.display = "none";
       if (audEl) audEl.style.display = "";
@@ -2195,7 +2489,7 @@
   }
 
   function upRow(r, id, el, rankIndex, totalCount) {
-    var icons = { image: "🖼️ IMG", video: "🎥 VID", audio: "🎵 AUD", text: "✍️ TXT" };
+    var icons = { image: "🖼️ IMG", video: "🎥 VID", audio: "🎵 AUD", text: "✍️ TXT", clock: "🕒 CLK", marquee: "📰 TCK", box: "🔲 BOX" };
     r.querySelector(".r-icon").textContent = icons[el.type] || "CAP";
     var displayName = el.name || (el.addedBy ? "@" + el.addedBy : "Capa " + id.slice(-4));
     r.querySelector(".r-name").textContent = displayName;
@@ -2251,7 +2545,7 @@
     if (!el) return;
     editSec.style.display = "";
 
-    var typeNames = { image: "Imagen", video: "Video", audio: "Audio", text: "Texto" };
+    var typeNames = { image: "Imagen", video: "Video", audio: "Audio", text: "Texto", clock: "Reloj / Timer", marquee: "Ticker / Marquee", box: "Marco / Caja" };
     edTitleType.textContent = (typeNames[el.type] || "Capa");
     edNameInput.value = el.name || "";
     edNameInput.oninput = function() {
@@ -2357,6 +2651,183 @@
           });
           bgColEl.addEventListener("input", function() {
             if (roomRef) roomRef.child(id).update({ bgColor: bgColEl.value, bgOpacity: 85 });
+          });
+        }
+      }, 50);
+    }
+
+    if (el.type === "clock") {
+      tf.innerHTML =
+        '<div class="edit-group"><label>Modo de Reloj</label>' +
+        '  <select id="ed-clock-mode">' +
+        '    <option value="time"' + (el.clockMode === "time" ? " selected" : "") + '>🕒 Reloj Digital (Hora en Vivo)</option>' +
+        '    <option value="timer"' + (el.clockMode === "timer" ? " selected" : "") + '>⏱️ Cuenta Regresiva (Countdown)</option>' +
+        '  </select>' +
+        '</div>' +
+        '<div id="ed-timer-controls" style="' + (el.clockMode === "timer" ? "" : "display:none") + '">' +
+        '  <div class="edit-group"><label>Duración (Segundos)</label>' +
+        '    <input type="number" id="ed-timer-secs" min="10" max="86400" value="' + (el.timerSeconds || 300) + '">' +
+        '  </div>' +
+        '  <div style="display:flex;gap:6px;margin-bottom:10px">' +
+        '    <button class="btn primary" id="btn-timer-toggle" style="flex:1">' + (el.timerRunning ? '⏸ Pausar' : '▶ Iniciar') + '</button>' +
+        '    <button class="btn" id="btn-timer-reset" style="flex:1">🔄 Reiniciar</button>' +
+        '  </div>' +
+        '</div>' +
+        '<div class="grid2">' +
+        '  <div class="edit-group"><label>Color Dígitos</label>' +
+        '    <input type="color" id="ed-clock-color" value="' + (el.textColor || "#53fc18") + '">' +
+        '  </div>' +
+        '  <div class="edit-group"><label>Color Fondo</label>' +
+        '    <input type="color" id="ed-clock-bg" value="' + (el.bgColor || "#090c10") + '">' +
+        '  </div>' +
+        '</div>' +
+        '<div class="edit-group"><label>Fuente</label>' +
+        '  <select id="ed-clock-font">' +
+        '    <option value="\'Orbitron\', sans-serif">Orbitron (Digital / Gaming)</option>' +
+        '    <option value="\'Montserrat\', sans-serif">Montserrat (Limpia)</option>' +
+        '    <option value="\'Bebas Neue\', cursive">Bebas Neue (Bold)</option>' +
+        '    <option value="\'Inter\', sans-serif">Inter (Minimalista)</option>' +
+        '  </select>' +
+        '</div>';
+
+      setTimeout(function() {
+        var modeSel = document.getElementById("ed-clock-mode");
+        var timerCtrl = document.getElementById("ed-timer-controls");
+        var secIn = document.getElementById("ed-timer-secs");
+        var tglBtn = document.getElementById("btn-timer-toggle");
+        var rstBtn = document.getElementById("btn-timer-reset");
+        var colIn = document.getElementById("ed-clock-color");
+        var bgIn = document.getElementById("ed-clock-bg");
+        var fontSel = document.getElementById("ed-clock-font");
+
+        if (modeSel) {
+          modeSel.addEventListener("change", function() {
+            var m = modeSel.value;
+            if (timerCtrl) timerCtrl.style.display = (m === "timer") ? "" : "none";
+            if (roomRef) roomRef.child(id).update({ clockMode: m, timerRunning: true, timerStartedAt: Date.now() });
+          });
+        }
+        if (secIn) {
+          secIn.addEventListener("change", function() {
+            var v = parseInt(secIn.value) || 300;
+            if (roomRef) roomRef.child(id).update({ timerSeconds: v, timerStartedAt: Date.now() });
+          });
+        }
+        if (tglBtn) {
+          tglBtn.addEventListener("click", function() {
+            var isRunning = el.timerRunning;
+            if (isRunning) {
+              var elapsed = Math.floor((Date.now() - (el.timerStartedAt || Date.now())) / 1000);
+              var rem = Math.max(0, (el.timerSeconds || 300) - elapsed);
+              if (roomRef) roomRef.child(id).update({ timerRunning: false, timerSeconds: rem });
+            } else {
+              if (roomRef) roomRef.child(id).update({ timerRunning: true, timerStartedAt: Date.now() });
+            }
+          });
+        }
+        if (rstBtn) {
+          rstBtn.addEventListener("click", function() {
+            var orig = parseInt((secIn && secIn.value) || 300);
+            if (roomRef) roomRef.child(id).update({ timerSeconds: orig, timerRunning: true, timerStartedAt: Date.now() });
+          });
+        }
+        if (colIn) colIn.addEventListener("input", function() { if (roomRef) roomRef.child(id).update({ textColor: colIn.value }); });
+        if (bgIn) bgIn.addEventListener("input", function() { if (roomRef) roomRef.child(id).update({ bgColor: bgIn.value, bgOpacity: 90 }); });
+        if (fontSel) {
+          fontSel.value = el.fontFamily || "'Orbitron', sans-serif";
+          fontSel.addEventListener("change", function() { if (roomRef) roomRef.child(id).update({ fontFamily: fontSel.value }); });
+        }
+      }, 50);
+    }
+
+    if (el.type === "marquee") {
+      tf.innerHTML =
+        '<div class="edit-group"><label>Texto del Ticker / Anuncio</label>' +
+        '<input type="text" id="ed-marquee-text" value="' + esc2(el.text || "") + '"></div>' +
+        '<div class="edit-group"><label>Velocidad de Movimiento (<span id="ed-speed-val">' + (el.speed || 5) + '</span>/10)</label>' +
+        '<input type="range" id="ed-marquee-speed" min="1" max="10" value="' + (el.speed || 5) + '">' +
+        '</div>' +
+        '<div class="grid2">' +
+        '  <div class="edit-group"><label>Color Texto</label>' +
+        '    <input type="color" id="ed-marquee-color" value="' + (el.textColor || "#ffffff") + '">' +
+        '  </div>' +
+        '  <div class="edit-group"><label>Color Fondo</label>' +
+        '    <input type="color" id="ed-marquee-bg" value="' + (el.bgColor || "#0d1117") + '">' +
+        '  </div>' +
+        '</div>' +
+        '<div class="edit-group"><label>Fuente</label>' +
+        '  <select id="ed-marquee-font">' +
+        '    <option value="\'Montserrat\', sans-serif">Montserrat (Limpia)</option>' +
+        '    <option value="\'Bebas Neue\', cursive">Bebas Neue (Titular)</option>' +
+        '    <option value="\'Orbitron\', sans-serif">Orbitron (Gaming)</option>' +
+        '    <option value="\'Inter\', sans-serif">Inter (Minimalista)</option>' +
+        '  </select>' +
+        '</div>';
+
+      setTimeout(function() {
+        var txtIn = document.getElementById("ed-marquee-text");
+        var spdIn = document.getElementById("ed-marquee-speed");
+        var spdVal = document.getElementById("ed-speed-val");
+        var colIn = document.getElementById("ed-marquee-color");
+        var bgIn = document.getElementById("ed-marquee-bg");
+        var fontSel = document.getElementById("ed-marquee-font");
+
+        if (txtIn) txtIn.addEventListener("input", function() { if (roomRef) roomRef.child(id).update({ text: txtIn.value }); });
+        if (spdIn) {
+          spdIn.addEventListener("input", function() {
+            var v = parseInt(spdIn.value) || 5;
+            if (spdVal) spdVal.textContent = v;
+            if (roomRef) roomRef.child(id).update({ speed: v });
+          });
+        }
+        if (colIn) colIn.addEventListener("input", function() { if (roomRef) roomRef.child(id).update({ textColor: colIn.value }); });
+        if (bgIn) bgIn.addEventListener("input", function() { if (roomRef) roomRef.child(id).update({ bgColor: bgIn.value, bgOpacity: 90 }); });
+        if (fontSel) {
+          fontSel.value = el.fontFamily || "'Montserrat', sans-serif";
+          fontSel.addEventListener("change", function() { if (roomRef) roomRef.child(id).update({ fontFamily: fontSel.value }); });
+        }
+      }, 50);
+    }
+
+    if (el.type === "box") {
+      tf.innerHTML =
+        '<div class="grid2">' +
+        '  <div class="edit-group"><label>Color Borde</label>' +
+        '    <input type="color" id="ed-box-bordercolor" value="' + (el.borderColor || "#53fc18") + '">' +
+        '  </div>' +
+        '  <div class="edit-group"><label>Color Fondo</label>' +
+        '    <input type="color" id="ed-box-bgcolor" value="' + (el.bgColor || "#12161f") + '">' +
+        '  </div>' +
+        '</div>' +
+        '<div class="edit-group"><label>Grosor del Borde (<span id="ed-box-bw-val">' + (el.borderWidth != null ? el.borderWidth : 3) + 'px</span>)</label>' +
+        '<input type="range" id="ed-box-bw" min="0" max="20" value="' + (el.borderWidth != null ? el.borderWidth : 3) + '">' +
+        '</div>' +
+        '<div class="edit-group"><label>Redondeado de Esquinas (<span id="ed-box-br-val">' + (el.borderRadius != null ? el.borderRadius : 8) + 'px</span>)</label>' +
+        '<input type="range" id="ed-box-br" min="0" max="50" value="' + (el.borderRadius != null ? el.borderRadius : 8) + '">' +
+        '</div>';
+
+      setTimeout(function() {
+        var bCol = document.getElementById("ed-box-bordercolor");
+        var bgCol = document.getElementById("ed-box-bgcolor");
+        var bwIn = document.getElementById("ed-box-bw");
+        var bwVal = document.getElementById("ed-box-bw-val");
+        var brIn = document.getElementById("ed-box-br");
+        var brVal = document.getElementById("ed-box-br-val");
+
+        if (bCol) bCol.addEventListener("input", function() { if (roomRef) roomRef.child(id).update({ borderColor: bCol.value }); });
+        if (bgCol) bgCol.addEventListener("input", function() { if (roomRef) roomRef.child(id).update({ bgColor: bgCol.value }); });
+        if (bwIn) {
+          bwIn.addEventListener("input", function() {
+            var v = parseInt(bwIn.value);
+            if (bwVal) bwVal.textContent = v + "px";
+            if (roomRef) roomRef.child(id).update({ borderWidth: v });
+          });
+        }
+        if (brIn) {
+          brIn.addEventListener("input", function() {
+            var v = parseInt(brIn.value);
+            if (brVal) brVal.textContent = v + "px";
+            if (roomRef) roomRef.child(id).update({ borderRadius: v });
           });
         }
       }, 50);
