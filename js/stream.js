@@ -183,21 +183,13 @@
       w.style.fontWeight = "bold";
       w.style.fontStyle = "normal";
       w.style.lineHeight = "1";
-      w.style.fontFamily = el.fontFamily || "'Comic Sans MS', 'Comic Sans', cursive";
+      w.style.fontFamily = el.fontFamily || "'Montserrat', sans-serif";
       w.style.paintOrder = "stroke fill";
 
-      var boxW = (el.w || 0.3) * 1920;
       var boxH = (el.h || 0.08) * 1080;
-      var text = el.text || "";
-      var len = Math.max(1, text.length);
+      var dynFs = boxH * 0.88;
 
-      var fsByH = boxH * 0.85;
-      var fsByW = boxW / (len * 0.60);
-      var baseFs = Math.min(fsByH, fsByW);
-      var userScale = (el.fontSize || 56) / 56;
-      var dynFs = Math.max(8, baseFs * userScale);
-
-      w.style.fontSize = Math.round(dynFs) + "px";
+      w.style.fontSize = Math.max(8, Math.round(dynFs)) + "px";
 
       // Adaptive stroke & shadow to maintain legibility when small
       var strokeW = Math.max(0.5, Math.min(dynFs * 0.05, 5));

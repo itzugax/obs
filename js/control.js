@@ -1082,26 +1082,32 @@
     });
   }
 
-  /* Helper to calculate exact tight text bounding box (fixes oversized selection box and clips) */
+  /* Helper to calculate exact tight text bounding box with zero excess padding */
   function calcTightTextBounds(txt, fontFamily, fontSize) {
     var text = txt || "Texto";
     var fSize = fontSize || 56;
-    var fFam = fontFamily || "'Comic Sans MS', 'Comic Sans', cursive";
+    var fFam = fontFamily || "'Montserrat', sans-serif";
     var cvs = document.createElement("canvas");
     var ctx = cvs.getContext("2d");
     ctx.font = "bold " + fSize + "px " + fFam;
     var metrics = ctx.measureText(text);
-    var pxW = Math.ceil(metrics.width) + 12;
-    var pxH = Math.ceil(fSize * 1.15) + 6;
+
+    var pxW = metrics.width;
+    var pxH = fSize * 0.82;
     if (metrics.actualBoundingBoxAscent && metrics.actualBoundingBoxDescent) {
-      pxH = Math.ceil(metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent) + 12;
+      pxH = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
     }
-    // Map to 1920x1080 stream coordinates
+    // Add minimal 2px buffer
+    pxW += 4;
+    pxH += 4;
+
     var normW = pxW / 1920;
     var normH = pxH / 1080;
     return {
-      w: parseFloat(Math.max(0.02, Math.min(0.98, normW)).toFixed(4)),
-      h: parseFloat(Math.max(0.02, Math.min(0.98, normH)).toFixed(4))
+      w: parseFloat(Math.max(0.015, Math.min(0.98, normW)).toFixed(4)),
+      h: parseFloat(Math.max(0.015, Math.min(0.98, normH)).toFixed(4)),
+      pxW: pxW,
+      pxH: pxH
     };
   }
 
@@ -1921,9 +1927,6 @@
     d.style.opacity = (el.opacity != null ? el.opacity : 100) / 100;
     d.style.zIndex = el.z || 0;
 
-    var tagEl = d.querySelector(".tag");
-    if (tagEl) tagEl.textContent = el.name || "";
-
     var wrap = d.querySelector(".media-wrap");
     var txtEl = wrap.querySelector(".txt-content");
     var audEl = wrap.querySelector(".audio-badge");
@@ -1944,9 +1947,9 @@
       wrap.style.color = el.textColor || "#ffffff";
       wrap.style.fontWeight = "bold";
       wrap.style.fontStyle = "normal";
-      wrap.style.lineHeight = "1.1";
+      wrap.style.lineHeight = "1";
       wrap.style.textShadow = "2px 2px 6px rgba(0,0,0,0.9)";
-      wrap.style.fontFamily = el.fontFamily || "'Comic Sans MS', 'Comic Sans', cursive";
+      wrap.style.fontFamily = el.fontFamily || "'Montserrat', sans-serif";
       wrap.style.paintOrder = "stroke fill";
       updateTextSize(d, el, el.h || 0.08, el.w || 0.3);
       if (txtEl) txtEl.textContent = el.text || "";
@@ -1968,12 +1971,12 @@
         if (vidEl) vidEl.style.display = "none";
         if (!imgEl) {
           imgEl = document.createElement("img");
-          imgEl.style.cssText = "width:100%;height:100%;object-fit:contain;display:block;pointer-events:none";
+          imgEl.style.cssText = "width:100%;height:100%;object-fit:fill;display:block;pointer-events:none";
           wrap.appendChild(imgEl);
         }
         imgEl.style.display = "";
         if (imgEl.src !== src) imgEl.src = src;
-        imgEl.style.objectFit = el.objectFit || "contain";
+        imgEl.style.objectFit = "fill";
 
       } else if (el.type === "video") {
         if (imgEl) imgEl.style.display = "none";
@@ -1982,13 +1985,13 @@
           vidEl.muted = true;
           vidEl.autoplay = true;
           vidEl.playsInline = true;
-          vidEl.style.cssText = "width:100%;height:100%;object-fit:contain;display:block;pointer-events:none";
+          vidEl.style.cssText = "width:100%;height:100%;object-fit:fill;display:block;pointer-events:none";
           wrap.appendChild(vidEl);
         }
         vidEl.style.display = "";
         if (vidEl.src !== src) vidEl.src = src;
         vidEl.loop = !!el.loop;
-        vidEl.style.objectFit = el.objectFit || "contain";
+        vidEl.style.objectFit = "fill";
         try {
           if (el.visible === false) { if (!vidEl.paused) vidEl.pause(); }
           else if (vidEl.paused && vidEl.src) { vidEl.play().catch(function() {}); }
@@ -2000,20 +2003,15 @@
   function updateTextSize(elDom, elData, hVal, wVal) {
     var wrap = elDom.querySelector(".media-wrap");
     if (!wrap) return;
-    var cw = canvas.clientWidth || 640;
     var ch = canvas.clientHeight || 360;
-    var boxW = (wVal != null ? wVal : (elData.w || 0.3)) * cw;
     var boxH = (hVal != null ? hVal : (elData.h || 0.08)) * ch;
-    var text = elData.text || "";
-    var len = Math.max(1, text.length);
+    var dynFs = boxH * 0.88;
 
-    var fsByH = boxH * 0.85;
-    var fsByW = boxW / (len * 0.60);
-    var baseFs = Math.min(fsByH, fsByW);
-    var userScale = (elData.fontSize || 56) / 56;
-    var dynFs = Math.max(8, baseFs * userScale);
-
-    wrap.style.fontSize = Math.round(dynFs) + "px";
+    wrap.style.fontSize = Math.max(8, Math.round(dynFs)) + "px";
+    wrap.style.lineHeight = "1";
+    wrap.style.display = "flex";
+    wrap.style.alignItems = "center";
+    wrap.style.justifyContent = "center";
 
     // Adaptive stroke & shadow to maintain legibility when small
     var strokeW = Math.max(0.5, Math.min(dynFs * 0.05, 5));
@@ -2030,7 +2028,6 @@
 
   function mkDiv(el) {
     var d = document.createElement("div");
-    var tagText = el.name || "";
     d.innerHTML =
       '<div class="resize-handle resize-nw" title="Redimensionar esquina"></div>' +
       '<div class="resize-handle resize-n" title="Redimensionar arriba"></div>' +
@@ -2041,7 +2038,6 @@
       '<div class="resize-handle resize-sw" title="Redimensionar esquina"></div>' +
       '<div class="resize-handle resize-w" title="Redimensionar izquierda"></div>' +
       '<div class="media-wrap">' +
-      '<span class="tag">' + esc(tagText) + '</span>' +
       '<span class="txt-content" style="display:none"></span>' +
       '<div class="audio-badge" style="display:none">&#127925;</div>' +
       '</div>';
@@ -2256,12 +2252,26 @@
         '</div>';
 
       setTimeout(function() {
-        bindInput("ed-text", "text");
+        var textEl = document.getElementById("ed-text");
+        if (textEl) {
+          textEl.addEventListener("input", function() {
+            var val = textEl.value;
+            var curFont = (state[id] && state[id].fontFamily) || "'Montserrat', sans-serif";
+            var bounds = calcTightTextBounds(val, curFont, 56);
+            if (roomRef) {
+              roomRef.child(id).update({ text: val, w: bounds.w, h: bounds.h });
+            }
+          });
+        }
         var fontEl = document.getElementById("ed-font");
         if (fontEl) {
-          fontEl.value = el.fontFamily || "'Comic Sans MS', 'Comic Sans', cursive";
+          fontEl.value = el.fontFamily || "'Montserrat', sans-serif";
           fontEl.addEventListener("change", function() {
-            if (roomRef) roomRef.child(id).update({ fontFamily: fontEl.value });
+            var curTxt = (state[id] && state[id].text) || "Texto";
+            var bounds = calcTightTextBounds(curTxt, fontEl.value, 56);
+            if (roomRef) {
+              roomRef.child(id).update({ fontFamily: fontEl.value, w: bounds.w, h: bounds.h });
+            }
           });
         }
         var fsEl = document.getElementById("ed-fontsize");
