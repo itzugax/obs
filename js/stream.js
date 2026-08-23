@@ -77,7 +77,9 @@ function renderOverlay(el) {
     node.textContent = el.content || "";
     var _fs = (el.fontSize || 48) * Math.sqrt((el.w * el.h) / (0.30 * 0.08));
     node.style.fontSize = _fs + "px";
-    node.style.color = el.fontColor || "#fff";
+    node.style.color = "#ffffff";
+    node.style.webkitTextStroke = "3px #000000";
+    node.style.paintOrder = "stroke fill";
     node.style.fontFamily = el.fontFamily || "Arial, sans-serif";
     node.style.fontWeight = el.bold ? "bold" : "normal";
     node.style.fontStyle = el.italic ? "italic" : "normal";

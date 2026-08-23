@@ -131,7 +131,9 @@ function renderNode(el) {
       wrap.textContent = el.content || "";
       var _fs = (el.fontSize || 48) * Math.sqrt((el.w * el.h) / (0.30 * 0.08));
       wrap.style.fontSize = _fs + "px";
-      wrap.style.color = el.fontColor || "#fff";
+      wrap.style.color = "#ffffff";
+      wrap.style.webkitTextStroke = "3px #000000";
+      wrap.style.paintOrder = "stroke fill";
       wrap.style.fontFamily = el.fontFamily || "Arial, sans-serif";
       wrap.style.fontWeight = el.bold ? "bold" : "normal";
       wrap.style.fontStyle = el.italic ? "italic" : "normal";
@@ -198,7 +200,9 @@ function renderNode(el) {
       wrap2.textContent = el.content || "";
       var _fs2 = (el.fontSize || 48) * Math.sqrt((el.w * el.h) / (0.30 * 0.08));
       wrap2.style.fontSize = _fs2 + "px";
-      wrap2.style.color = el.fontColor || "#fff";
+      wrap2.style.color = "#ffffff";
+      wrap2.style.webkitTextStroke = "3px #000000";
+      wrap2.style.paintOrder = "stroke fill";
       wrap2.style.fontFamily = el.fontFamily || "Arial, sans-serif";
       wrap2.style.fontWeight = el.bold ? "bold" : "normal";
       wrap2.style.fontStyle = el.italic ? "italic" : "normal";
@@ -578,7 +582,6 @@ document.getElementById("edit-save").addEventListener("click", function () {
   if (el.type === "text") {
     updates.content = document.getElementById("edit-text-input").value;
     updates.fontSize = parseInt(document.getElementById("edit-text-size").value) || 48;
-    updates.fontColor = document.getElementById("edit-text-color").value;
     updates.fontFamily = document.getElementById("edit-text-font").value;
     updates.bgColor = document.getElementById("edit-text-bg").value;
     updates.bgOpacity = parseInt(document.getElementById("edit-text-bg-opacity").value) || 0;
