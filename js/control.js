@@ -311,7 +311,8 @@
     if (btnDiscord) {
       btnDiscord.addEventListener("click", function() {
         var DISCORD_CLIENT_ID = "1527797262250410076";
-        var redirectUri = encodeURIComponent(window.location.origin + window.location.pathname);
+        // Redirect siempre a la URL pública de GitHub Pages (Discord no acepta file://)
+        var redirectUri = encodeURIComponent("https://itzugax.github.io/obs/");
         var scope = encodeURIComponent("identify");
         var discordUrl = "https://discord.com/oauth2/authorize" +
           "?client_id=" + DISCORD_CLIENT_ID +
