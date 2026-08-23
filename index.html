@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Panel de Control - Overlays en Vivo</title>
+  <link rel="stylesheet" href="css/panel.css">
+</head>
+<body>
+
+<header>
+  <h1>Overlay Control</h1>
+  <span id="stream-label"></span>
+  <span id="conn"><span class="dot"></span><span id="conn-text">Conectando...</span></span>
+</header>
+
+<div class="layout">
+  <aside>
+    <!-- Tabs: URL / Subir / Texto -->
+    <section class="card">
+      <h2>Agregar elemento</h2>
+      <div class="tabs">
+        <button class="tab active" data-tab="url">URL</button>
+        <button class="tab" data-tab="file">Subir PC</button>
+        <button class="tab" data-tab="text">Texto</button>
+      </div>
+
+      <!-- TAB: URL -->
+      <div class="tab-body active" id="tab-url">
+        <label for="url-input">URL del archivo multimedia</label>
+        <input type="url" id="url-input" placeholder="https://ejemplo.com/imagen.png">
+        <div class="hint">Tipo detectado: <b id="type-hint">---</b></div>
+        <button id="add-url" class="btn primary">Agregar al lienzo</button>
+      </div>
+
+      <!-- TAB: Subir archivo -->
+      <div class="tab-body" id="tab-file">
+        <div id="drop-zone" class="drop-zone">
+          <div class="drop-icon">+</div>
+          <div>Arrastra archivos aqui</div>
+          <div class="hint">o haz click para seleccionar</div>
+          <input type="file" id="file-input" accept="image/*,video/*,audio/*" multiple hidden>
+        </div>
+        <div id="upload-list" class="upload-list"></div>
+      </div>
+
+      <!-- TAB: Texto -->
+      <div class="tab-body" id="tab-text">
+        <label for="text-input">Texto</label>
+        <input type="text" id="text-input" placeholder="Escribe tu texto aqui...">
+        <div class="inline-row">
+          <div class="field">
+            <label>Tamano</label>
+            <input type="number" id="text-size" value="48" min="8" max="200">
+          </div>
+          <div class="field">
+            <label>Fuente</label>
+            <select id="text-font">
+              <option value="Arial, sans-serif">Arial</option>
+              <option value="Impact, sans-serif">Impact</option>
+              <option value="Georgia, serif">Georgia</option>
+              <option value="Courier New, monospace">Courier</option>
+              <option value="Verdana, sans-serif">Verdana</option>
+              <option value="Comic Sans MS, cursive">Comic Sans</option>
+            </select>
+          </div>
+        </div>
+        <div class="inline-row">
+          <div class="field">
+            <label>Color texto</label>
+            <input type="color" id="text-color" value="#ffffff">
+          </div>
+          <div class="field">
+            <label>Color fondo</label>
+            <input type="color" id="text-bg" value="#000000">
+          </div>
+          <div class="field">
+            <label>Opacidad fondo</label>
+            <input type="range" id="text-bg-opacity" min="0" max="100" value="0">
+          </div>
+        </div>
+        <div class="check-row">
+          <label><input type="checkbox" id="text-bold" checked> Negrita</label>
+          <label><input type="checkbox" id="text-italic"> Cursiva</label>
+        </div>
+        <button id="add-text" class="btn primary">Agregar texto</button>
+      </div>
+    </section>
+
+    <!-- Acciones globales -->
+    <section class="card">
+      <h2>Acciones globales</h2>
+      <div class="grid2">
+        <button id="hide-all" class="btn">Ocultar todo</button>
+        <button id="show-all" class="btn">Mostrar todo</button>
+      </div>
+      <button id="clear-all" class="btn danger">Limpiar pantalla</button>
+    </section>
+
+    <!-- Lista de elementos -->
+    <section class="card grow">
+      <h2>Elementos (<span id="count">0</span>)</h2>
+      <div id="list"></div>
+      <div id="empty-msg" class="empty">Sin elementos todavia...</div>
+    </section>
+  </aside>
+
+  <main>
+    <div class="canvas-wrap">
+      <div id="canvas"></div>
+      <p class="canvas-note">Lienzo 1920x1080 | Arrastra = mover | Bordes = redimensionar | Doble clic = traer al frente | Ctrl+V = pegar imagen</p>
+    </div>
+  </main>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/interactjs@1.10.27/dist/interact.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/control.js"></script>
+</body>
+</html>
