@@ -1107,7 +1107,7 @@
     var inTxt = document.getElementById("txtIn");
     if (!inTxt) return;
 
-    function doAddText(withTts) {
+    function doAddText() {
       var txt = inTxt.value.trim();
       if (!txt) { alert("Escribe algo pe, no lo dejes vacío xD"); inTxt.focus(); return; }
       if (!roomRef) { alert("Sin conexión a Firebase papu. F5 para revivir."); return; }
@@ -1126,30 +1126,35 @@
         text: txt, fontSize: 56,
         textColor: "#ffffff", strokeColor: "#000000", strokeWidth: 5,
         fontFamily: "'Comic Sans MS', 'Comic Sans', cursive",
-        bgType: "none", bgColor: "#000000", bgOpacity: 0,
-        tts: !!withTts
+        bgType: "none", bgColor: "#000000", bgOpacity: 0
       });
-
-      if (withTts && db) {
-        db.ref("streams/" + streamId + "/tts").set({
-          text: txt,
-          ts: Date.now(),
-          author: author
-        });
-        speakTts(txt);
-      }
 
       inTxt.value = "";
       selectRow(id);
       openEdit(id);
     }
 
-    if (btn) btn.addEventListener("click", function() { doAddText(false); });
-    if (btnTts) btnTts.addEventListener("click", function() { doAddText(true); });
+    function doSpeakTtsOnly() {
+      var txt = inTxt.value.trim();
+      if (!txt) { alert("Escribe algo para hablar pe xD"); inTxt.focus(); return; }
+      if (!db) { alert("Sin conexión a Firebase papu."); return; }
+      var author = _currentUser.name || localStorage.getItem("ugax_user") || "streamer";
+
+      db.ref("streams/" + streamId + "/tts").set({
+        text: txt,
+        ts: Date.now(),
+        author: author
+      });
+      speakTts(txt);
+      inTxt.value = "";
+    }
+
+    if (btn) btn.addEventListener("click", doAddText);
+    if (btnTts) btnTts.addEventListener("click", doSpeakTtsOnly);
     inTxt.addEventListener("keydown", function(e) {
       if (e.key === "Enter") {
         e.preventDefault();
-        doAddText(false);
+        doAddText();
       }
     });
   }
