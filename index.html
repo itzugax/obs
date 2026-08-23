@@ -6,21 +6,59 @@
   <title>Control de UGAX — Panel de Overlays</title>
   <link rel="stylesheet" href="css/panel.css">
 </head>
-<body>
-  <header>
-    <div class="header-left">
-      <h1>&#127918; Control de UGAX</h1>
-      <span id="stream-label" title="Sala actual">sala-stream-demo</span>
-      <button class="header-btn" id="btn-copy-obs" title="Copiar enlace para el Browser Source de OBS">&#128203; Copiar Link OBS</button>
-      <button class="header-btn user-btn" id="btn-user-login" title="Cambiar usuario o sala">&#128100; <span id="user-display">Iniciar Sesión</span></button>
+<body class="kick-theme">
+
+  <!-- Lobby / Gatekeeper Screen -->
+  <div id="lobby-screen" class="lobby-container">
+    <div class="lobby-card">
+      <div class="lobby-logo">
+        <span class="kick-dot"></span>
+        <h2>CONTROL <span class="kick-green">UGAX</span></h2>
+      </div>
+      <p class="lobby-desc">Panel de moderación y control de overlays en vivo para OBS Studio.</p>
+
+      <form id="lobby-form" onsubmit="return false;">
+        <div class="lobby-group">
+          <label>👤 Tu Apodo de Moderador</label>
+          <input type="text" id="lobby-user" placeholder="ej: itzugax" required autofocus>
+        </div>
+
+        <div class="lobby-group">
+          <label>📡 Nombre del Canal / Sala</label>
+          <input type="text" id="lobby-room" placeholder="ej: canal-demo" required>
+          <span class="lobby-hint">Debe ser el mismo nombre que uses en tu Browser Source de OBS</span>
+        </div>
+
+        <div class="lobby-group">
+          <label>🔒 PIN de Seguridad de la Sala</label>
+          <input type="password" id="lobby-pin" placeholder="ej: 1234" maxlength="12" required>
+          <span class="lobby-hint">Si la sala es nueva, este PIN será su clave de acceso</span>
+        </div>
+
+        <button type="submit" class="btn-kick-primary" id="btn-enter-room">⚡ ENTRAR AL PANEL</button>
+      </form>
     </div>
-    <div id="conn">
-      <span class="obs-badge" id="obs-badge" title="Estado de OBS Studio">&#128225; OBS: Buscando...</span>
-      <span class="ping-badge" id="ping-badge" title="Latencia con el server">-- ms</span>
-      <div class="dot" id="dot"></div>
-      <span id="conn-txt">Conectao papu</span>
-    </div>
-  </header>
+  </div>
+
+  <!-- Main Panel Screen (Hidden until PIN is verified) -->
+  <div id="app-wrapper" style="display:none">
+    <header>
+      <div class="header-left">
+        <div class="brand">
+          <span class="kick-dot"></span>
+          <h1>UGAX <span class="kick-green">STUDIO</span></h1>
+        </div>
+        <span id="stream-label" class="room-pill" title="Sala actual">sala-stream-demo</span>
+        <button class="header-btn" id="btn-copy-obs" title="Copiar enlace para el Browser Source de OBS">&#128203; Copiar Link OBS</button>
+        <button class="header-btn user-btn" id="btn-user-login" title="Cambiar usuario o sala">&#128100; <span id="user-display">itzugax</span></button>
+      </div>
+      <div id="conn">
+        <button class="panic-btn" id="btn-panic" title="Ocultar todas las capas en caso de emergencia">&#128065;&#8205;&#128488; P&aacute;nico</button>
+        <span class="obs-badge" id="obs-badge" title="Estado de OBS Studio">&#128225; OBS: Buscando...</span>
+        <span class="ping-badge" id="ping-badge" title="Latencia con el server">-- ms</span>
+        <div class="dot" id="dot"></div>
+      </div>
+    </header>
 
   <div class="layout">
     <aside>
@@ -165,6 +203,7 @@
       </div>
     </main>
   </div>
+  </div> <!-- /app-wrapper -->
 
   <!-- User & Room Login Modal -->
   <div class="modal-overlay" id="login-modal" style="display:none">

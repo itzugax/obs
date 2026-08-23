@@ -18,14 +18,102 @@
 
   /* === Init on DOM ready === */
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", init);
+    document.addEventListener("DOMContentLoaded", initLobby);
   } else {
-    init();
+    initLobby();
   }
 
-  function init() {
+  /* ============================================
+     LOBBY / PIN GATEKEEPER
+     ============================================ */
+  function initLobby() {
+    var lobbyScreen = document.getElementById("lobby-screen");
+    var appWrapper = document.getElementById("app-wrapper");
+    var form = document.getElementById("lobby-form");
+    var btnEnter = document.getElementById("btn-enter-room");
+    var inUser = document.getElementById("lobby-user");
+    var inRoom = document.getElementById("lobby-room");
+    var inPin = document.getElementById("lobby-pin");
+
+    // Pre-fill last used values if any
+    if (inUser) inUser.value = localStorage.getItem("ugax_user") || "";
+    if (inRoom) inRoom.value = new URLSearchParams(window.location.search).get("room") || localStorage.getItem("ugax_last_room") || "";
+
+    // Add error element to lobby card
+    var lobbyCard = document.querySelector(".lobby-card");
+    var errEl = document.createElement("p");
+    errEl.className = "lobby-error";
+    if (lobbyCard && btnEnter) lobbyCard.insertBefore(errEl, btnEnter.nextSibling);
+
+    function attemptEnter() {
+      var username = (inUser ? inUser.value.trim() : "").toLowerCase().replace(/[^a-z0-9_-]/g, "");
+      var room = (inRoom ? inRoom.value.trim() : "").replace(/\s+/g, "-").toLowerCase();
+      var pin = (inPin ? inPin.value.trim() : "");
+
+      if (!username || !room || !pin) {
+        errEl.textContent = "Rellena todos los campos papu";
+        return;
+      }
+
+      // Show loading
+      if (btnEnter) btnEnter.textContent = "Verificando...";
+      errEl.textContent = "";
+
+      // Check/set PIN via Firebase
+      var pinRef = firebase.database().ref("rooms/" + room + "/pin");
+      pinRef.once("value", function(snap) {
+        var storedPin = snap.val();
+        if (!storedPin) {
+          // Room is new — save the PIN as the master
+          pinRef.set(pin, function(err) {
+            if (err) { errEl.textContent = "Error al guardar el PIN en Firebase"; if (btnEnter) btnEnter.textContent = "⚡ ENTRAR AL PANEL"; return; }
+            localStorage.setItem("ugax_user", username);
+            localStorage.setItem("ugax_last_room", room);
+            localStorage.setItem("ugax_pin_" + room, pin);
+            launchApp(username, room);
+          });
+        } else if (storedPin === pin) {
+          // PIN matches
+          localStorage.setItem("ugax_user", username);
+          localStorage.setItem("ugax_last_room", room);
+          localStorage.setItem("ugax_pin_" + room, pin);
+          launchApp(username, room);
+        } else {
+          errEl.textContent = "❌ PIN incorrecto, intenta de nuevo";
+          if (btnEnter) btnEnter.textContent = "⚡ ENTRAR AL PANEL";
+          if (inPin) { inPin.value = ""; inPin.focus(); }
+        }
+      }, function() {
+        // Firebase not ready yet — allow entry with local session
+        errEl.textContent = "⚠️ Sin Firebase, entrando con sesión local...";
+        setTimeout(function() {
+          localStorage.setItem("ugax_user", username);
+          localStorage.setItem("ugax_last_room", room);
+          launchApp(username, room);
+        }, 1200);
+      });
+    }
+
+    if (btnEnter) btnEnter.addEventListener("click", attemptEnter);
+    if (form) form.addEventListener("submit", attemptEnter);
+
+    function launchApp(username, room) {
+      streamId = room;
+      // Hide lobby, show app
+      if (lobbyScreen) lobbyScreen.style.display = "none";
+      if (appWrapper) appWrapper.style.display = "flex";
+      initApp(username);
+    }
+  }
+
+  /* ============================================
+     MAIN APP INIT
+     ============================================ */
+  function initApp(username) {
     var urlParams = new URLSearchParams(window.location.search);
-    streamId = urlParams.get("room") || (typeof STREAM_ID !== "undefined" && STREAM_ID) || "sala-stream-demo";
+    // streamId already set by lobby; keep URL in sync
+    var base = window.location.href.split("?")[0];
+    window.history.replaceState({}, "", base + "?room=" + encodeURIComponent(streamId));
 
     canvas = document.getElementById("canvas");
     listEl = document.getElementById("list");
@@ -42,6 +130,10 @@
     var streamLbl = document.getElementById("stream-label");
     if (streamLbl) streamLbl.textContent = streamId;
 
+    var userDisplay = document.getElementById("user-display");
+    if (userDisplay) userDisplay.textContent = "@" + username;
+
+    initPanicBtn();
     initUserSession();
     initSoundboard();
     initTabs();
@@ -56,7 +148,33 @@
     initServices();
   }
 
-  /* === User Profile & Room Session === */
+  /* === Panic Button === */
+  function initPanicBtn() {
+    var btn = document.getElementById("btn-panic");
+    if (!btn) return;
+    btn.addEventListener("click", function() {
+      if (!db) return;
+      // Hide all elements instantly by setting visible=false on all
+      db.ref("streams/" + streamId + "/elements").once("value", function(snap) {
+        var updates = {};
+        snap.forEach(function(child) {
+          updates[child.key + "/v"] = false;
+        });
+        db.ref("streams/" + streamId + "/elements").update(updates);
+      });
+      // Visual feedback
+      btn.textContent = "✓ Todo oculto";
+      btn.style.background = "var(--danger)";
+      btn.style.color = "#fff";
+      setTimeout(function() {
+        btn.textContent = "👁️‍🗨️ Pánico";
+        btn.style.background = "";
+        btn.style.color = "";
+      }, 2000);
+    });
+  }
+
+  /* === User Profile & Room Session (modal post-login) === */
   function initUserSession() {
     var storedUser = localStorage.getItem("ugax_user") || "itzugax";
     var userDisplay = document.getElementById("user-display");
@@ -98,6 +216,7 @@
 
         var base = window.location.href.split("?")[0];
         window.location.href = base + "?room=" + encodeURIComponent(newRoom);
+
       });
     }
   }
