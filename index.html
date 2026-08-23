@@ -11,15 +11,39 @@
   <!-- Lobby / Gatekeeper Screen -->
   <div id="lobby-screen" class="lobby-container">
     <div class="lobby-card">
-      <div class="lobby-logo">
-        <h2>UGAX <span class="kick-green">STUDIO</span></h2>
+      <div class="lobby-card-top">
+        <div class="lobby-logo">
+          <h2>UGAX <span class="kick-green">STUDIO</span></h2>
+        </div>
+        <button class="icon-help-btn" id="btn-open-help" title="Ver guía de uso">&#10067; Ayuda</button>
       </div>
       <p class="lobby-desc">Panel de control de overlays en vivo para tu stream.</p>
 
+      <!-- Google / YouTube Quick Auth -->
+      <div class="google-auth-box">
+        <button type="button" class="btn-google-auth" id="btn-google-login">
+          <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
+          Iniciar sesión con Google / YouTube
+        </button>
+        <div id="auth-profile-badge" class="auth-profile-badge" style="display:none">
+          <img id="lobby-user-pfp" class="lobby-pfp-img" src="">
+          <div class="profile-info">
+            <span id="lobby-user-name" class="profile-name">---</span>
+            <span class="profile-status">✓ Verificado</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Rooms Cards -->
+      <div id="recent-rooms-box" class="recent-rooms-box" style="display:none">
+        <label>📡 Mis salas recientes:</label>
+        <div class="recent-rooms-grid" id="recent-rooms-grid"></div>
+      </div>
+
       <form id="lobby-form" onsubmit="return false;">
-        <div class="lobby-group">
+        <div class="lobby-group" id="group-nickname">
           <label>Nickname</label>
-          <input type="text" id="lobby-user" placeholder="ej: itzugax" required autofocus autocomplete="off">
+          <input type="text" id="lobby-user" placeholder="ej: itzugax" required autocomplete="off">
         </div>
 
         <div class="lobby-group">
@@ -43,15 +67,6 @@
 
         <button type="submit" class="btn-kick-primary" id="btn-enter-room">ENTRAR AL PANEL</button>
       </form>
-
-      <div class="lobby-tips">
-        <div class="lobby-tips-title">💡 ¿Cómo funciona?</div>
-        <ul>
-          <li><b>1.</b> Ingresa tu <b>Nickname</b> y el <b>Código de Sala (6 dígitos)</b>.</li>
-          <li><b>2.</b> El <b>PIN</b> protege tu sala para que nadie modifique tu stream.</li>
-          <li><b>3.</b> Usa el botón <i>Copiar Link</i> en tu programa de streaming (OBS / Streamlabs / VMix) como Navegador (1920x1080).</li>
-        </ul>
-      </div>
     </div>
   </div>
 
@@ -65,10 +80,13 @@
         </div>
         <span id="stream-label" class="room-pill" title="Sala actual">---</span>
         <button class="header-btn" id="btn-copy-obs" title="Copiar enlace del Overlay para tu programa de streaming">&#128203; Copiar Link Stream</button>
-        <button class="header-btn user-btn" id="btn-user-login" title="Perfil y usuario">&#128100; <span id="user-display">---</span></button>
+        <button class="header-btn members-btn" id="btn-members-modal" title="Ver integrantes conectados en la sala">&#128101; <span id="members-count">1</span> en sala</button>
+        <button class="header-btn user-btn" id="btn-user-login" title="Perfil y usuario">
+          <img id="header-user-avatar" class="user-avatar-mini" src="https://api.dicebear.com/7.x/bottts/svg?seed=itzugax">
+          <span id="user-display">---</span>
+        </button>
       </div>
       <div id="conn">
-        <button class="panic-btn" id="btn-panic" title="Ocultar todas las capas en caso de emergencia">&#128065;&#8205;&#128488; P&aacute;nico</button>
         <button class="logout-btn" id="btn-logout" title="Salir de la sala actual">&#128682; Salir</button>
         <span class="obs-badge" id="obs-badge" title="Estado del software de streaming">&#128225; Stream: Buscando...</span>
         <span class="ping-badge" id="ping-badge" title="Latencia con el server">-- ms</span>
@@ -221,6 +239,42 @@
   </div>
   </div> <!-- /app-wrapper -->
 
+  <!-- Active Room Members Modal -->
+  <div class="modal-overlay" id="members-modal" style="display:none">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>&#128101; Integrantes Conectados en la Sala</h3>
+        <button class="modal-close" id="btn-close-members">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="hint" style="margin-bottom:12px">Usuarios moderando en tiempo real en esta sala:</p>
+        <div class="members-list" id="members-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Help & Instructions Modal -->
+  <div class="modal-overlay" id="help-modal" style="display:none">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>&#128161; Guía de Uso de UGAX STUDIO</h3>
+        <button class="modal-close" id="btn-close-help">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="lobby-tips">
+          <div class="lobby-tips-title">💡 ¿Cómo transmitir overlays a tu stream?</div>
+          <ul>
+            <li><b>1.</b> Inicia sesión con <b>Google / YouTube</b> o escribe tu <b>Nickname</b>.</li>
+            <li><b>2.</b> Ingresa el <b>Código de Sala (6 dígitos)</b> y el <b>PIN de protección</b>.</li>
+            <li><b>3.</b> Haz clic en <i>Copiar Link Stream</i> en la barra superior del panel.</li>
+            <li><b>4.</b> En tu software de transmisión (OBS / Streamlabs / VMix), agrega una fuente <b>Navegador (Browser Source)</b> con resolución <b>1920x1080</b> y pega el enlace.</li>
+            <li><b>5.</b> ¡Todo lo que arrastres, escribas o dispares en el panel aparecerá instantáneamente en tu stream!</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- User & Room Login Modal -->
   <div class="modal-overlay" id="login-modal" style="display:none">
     <div class="modal-card">
@@ -229,22 +283,26 @@
         <button class="modal-close" id="btn-close-login">&times;</button>
       </div>
       <div class="modal-body">
-        <label>Nombre de usuario / Streamer</label>
+        <div class="user-profile-header">
+          <img id="modal-user-avatar" class="modal-pfp" src="https://api.dicebear.com/7.x/bottts/svg?seed=itzugax">
+          <div class="modal-user-info">
+            <span id="modal-user-name" class="modal-name">itzugax</span>
+            <span class="modal-role">Moderador de Sala</span>
+          </div>
+        </div>
+
+        <label style="margin-top:14px">Nombre de usuario / Nickname</label>
         <input type="text" id="login-user-input" placeholder="Tu apodo o canal (ej: itzugax)">
-        <div class="hint">Identifica quién está moderando en el panel</div>
 
-        <label style="margin-top:12px">Nombre de la Sala / Stream</label>
-        <input type="text" id="login-room-input" placeholder="Nombre de sala (ej: stream-demo)">
-        <div class="hint">Esta sala se conecta con tu Browser Source de OBS</div>
-
-        <button class="btn primary" id="btn-save-login" style="margin-top:16px;width:100%">&#128640; Entrar al Panel</button>
+        <button class="btn primary" id="btn-save-login" style="margin-top:16px;width:100%">&#128190; Guardar Perfil</button>
       </div>
     </div>
   </div>
 
-  <!-- Scripts locales -->
+  <!-- Scripts locales & CDN -->
   <script src="lib/interact.min.js"></script>
   <script src="lib/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
   <script src="lib/firebase-database.js"></script>
   <script src="lib/supabase.min.js"></script>
   <script src="js/config.js"></script>
