@@ -11,13 +11,13 @@
     <div class="header-left">
       <h1>&#127918; Control de UGAX</h1>
       <span id="stream-label" title="Sala actual">sala-stream-demo</span>
-      <button class="header-btn" id="btn-copy-obs" title="Copiar enlace para Browser Source de OBS">&#128203; Copiar Link OBS</button>
+      <button class="header-btn" id="btn-copy-obs" title="Copiar enlace para el Browser Source de OBS">&#128203; Copiar Link OBS</button>
     </div>
     <div id="conn">
-      <span class="obs-badge" id="obs-badge" title="Estado de OBS Studio">&#128225; OBS: Comprobando...</span>
-      <span class="ping-badge" id="ping-badge" title="Latencia a Firebase">-- ms</span>
+      <span class="obs-badge" id="obs-badge" title="Estado de OBS Studio">&#128225; OBS: Buscando...</span>
+      <span class="ping-badge" id="ping-badge" title="Latencia con el server">-- ms</span>
       <div class="dot" id="dot"></div>
-      <span id="conn-txt">Conectado</span>
+      <span id="conn-txt">Conectao papu</span>
     </div>
   </header>
 
@@ -26,25 +26,25 @@
       <div class="sidebar-top">
         <!-- Tabs -->
         <div class="tabs">
-          <button class="tab active" data-tab="tab-url">&#128279; URL</button>
-          <button class="tab" data-tab="tab-arch">&#128193; Archivo</button>
+          <button class="tab active" data-tab="tab-url">&#128279; Linkaso</button>
+          <button class="tab" data-tab="tab-arch">&#128193; Archivos</button>
           <button class="tab" data-tab="tab-txt">&#128196; Texto</button>
         </div>
 
         <!-- URL Tab -->
         <div class="tab-body active" id="tab-url">
-          <label>URL del recurso</label>
-          <input type="url" id="urlIn" placeholder="https://i.imgur.com/foto.jpg">
-          <div class="hint">Soporta <b>JPG, PNG, GIF, WEBP</b> (imagen) · <b>MP4, WEBM</b> (video) · <b>MP3, WAV, OGG</b> (audio)</div>
-          <button class="btn primary" id="addUrl">&#10010; Agregar al stream</button>
+          <label>Pega el zelda / URL aquí</label>
+          <input type="url" id="urlIn" placeholder="https://i.imgur.com/meme.jpg">
+          <div class="hint">Aguanta <b>JPG, PNG, GIF, WEBP</b> (fotos) · <b>MP4, WEBM</b> (videos) · <b>MP3, WAV, OGG</b> (rolitas)</div>
+          <button class="btn primary" id="addUrl">&#10010; Tirar al stream</button>
         </div>
 
         <!-- File Tab -->
         <div class="tab-body" id="tab-arch">
           <div class="drop-zone" id="drop-zone">
             <div class="drop-icon">&#128228;</div>
-            Arrastra archivos aquí o haz clic para subir
-            <div class="hint">Sube a <b>Supabase Storage</b></div>
+            Suelta tu meme aquí o dale clic para subir
+            <div class="hint">Sube a <b>Supabase Storage</b> de una</div>
           </div>
           <input type="file" id="fileIn" multiple accept="image/*,video/*,audio/*" style="display:none">
           <div class="upload-list" id="upload-list"></div>
@@ -52,34 +52,34 @@
 
         <!-- Text Tab -->
         <div class="tab-body" id="tab-txt">
-          <label>Texto a mostrar</label>
-          <input type="text" id="txtIn" placeholder="Escribe aquí tu texto...">
-          <div class="hint">Texto personalizable con colores, fuentes y contorno</div>
-          <button class="btn primary" id="addTxt" style="margin-top:8px">&#10010; Agregar texto</button>
+          <label>Qué quieres poner en pantalla</label>
+          <input type="text" id="txtIn" placeholder="Escribe cualquier webada...">
+          <div class="hint">Letras bien potentes con borde negro Comic Sans</div>
+          <button class="btn primary" id="addTxt" style="margin-top:8px">&#10010; Tirar texto</button>
         </div>
 
         <!-- Edit Section -->
         <section class="card" id="edit-section" style="display:none">
-          <h2>&#9998; Editar: <span id="ed-title-type">Capa</span></h2>
+          <h2>&#9998; Modificando: <span id="ed-title-type">Capa</span></h2>
           <div style="padding:8px 12px">
             
             <div class="edit-group">
-              <label>Nombre de la capa</label>
-              <input type="text" id="ed-name-input" placeholder="Nombre personalizado...">
+              <label>Apodo de la capa</label>
+              <input type="text" id="ed-name-input" placeholder="Ponle un nombre...">
             </div>
 
             <!-- Quick Action Buttons -->
             <div class="quick-actions">
-              <button class="q-btn" id="qa-center" title="Centrar en pantalla">&#127919; Centrar</button>
-              <button class="q-btn" id="qa-fullscreen" title="Ajustar a pantalla completa">&#128250; Pantalla Completa</button>
-              <button class="q-btn" id="qa-clone" title="Duplicar esta capa">&#128203; Duplicar</button>
+              <button class="q-btn" id="qa-center" title="Centrar en pantalla">&#127919; Centrar fino</button>
+              <button class="q-btn" id="qa-fullscreen" title="Ajustar a pantalla completa">&#128250; Modo cine</button>
+              <button class="q-btn" id="qa-clone" title="Duplicar esta capa">&#128203; Clonar</button>
             </div>
 
             <div id="edit-media-fields"></div>
             <div id="edit-text-fields"></div>
 
             <div class="edit-group">
-              <label>Opacidad general</label>
+              <label>Opacidad / Transparencia</label>
               <div style="display:flex;align-items:center;gap:8px">
                 <input type="range" id="ed-opacity" min="0" max="100" value="100" style="flex:1">
                 <span id="ed-opacity-val" style="font-size:12px;width:32px;text-align:right;font-weight:600">100%</span>
@@ -109,7 +109,7 @@
 
             <div style="display:flex;gap:6px;margin-top:8px">
               <button class="btn" id="ed-lock-toggle" style="flex:1">&#128274; Bloquear</button>
-              <button class="btn danger" id="ed-del" style="flex:1">&#128465; Eliminar</button>
+              <button class="btn danger" id="ed-del" style="flex:1">&#128465; Borrar</button>
             </div>
           </div>
         </section>
@@ -118,23 +118,23 @@
       <!-- Source list -->
       <div class="source-list" id="source-list">
         <div class="source-list-header">
-          <h2>&#127912; Fuentes (<span id="count">0</span>)</h2>
+          <h2>&#127912; Capas en vivo (<span id="count">0</span>)</h2>
           <div class="source-quick-tools">
-            <button class="mini-tool-btn" id="btn-toggle-all" title="Ocultar/Mostrar todo">&#128065; Todo</button>
-            <button class="mini-tool-btn danger" id="btn-clear-all" title="Limpiar todas las fuentes">&#129529; Limpiar</button>
+            <button class="mini-tool-btn" id="btn-toggle-all" title="Modo pánico: ocultar/mostrar todo">&#128065; Pánico</button>
+            <button class="mini-tool-btn danger" id="btn-clear-all" title="Limpiar todas las fuentes">&#129529; Limpiar to</button>
           </div>
         </div>
         <div id="list"></div>
-        <div class="empty" id="empty-msg">&#128196; Sin capas activas. Agrega algo desde arriba.</div>
+        <div class="empty" id="empty-msg">&#128196; No hay ni un meme puesto todavía. Sube algo arriba pe.</div>
       </div>
 
       <!-- Toolbar -->
       <div class="toolbar">
         <button id="tb-add" title="Agregar fuente">&#10010;</button>
-        <button id="tb-del" title="Eliminar seleccionada" class="danger">&#128465;</button>
-        <button id="tb-up" title="Subir capa (traer al frente)">&#9650;</button>
-        <button id="tb-down" title="Bajar capa (enviar atrás)">&#9660;</button>
-        <button id="tb-clone" title="Duplicar seleccionada">&#128203;</button>
+        <button id="tb-del" title="Borrar seleccionada" class="danger">&#128465;</button>
+        <button id="tb-up" title="Mover al frente">&#9650;</button>
+        <button id="tb-down" title="Mover al fondo">&#9660;</button>
+        <button id="tb-clone" title="Clonar seleccionada">&#128203;</button>
       </div>
     </aside>
 
@@ -145,10 +145,9 @@
         </div>
         <div class="canvas-note">
           <span>Vista previa 16:9</span> · 
-          <span>Arrastra y redimensiona libremente</span> · 
-          <span>Mantén <b>Shift</b> en esquinas para fijar proporción</span> · 
+          <span>Siempre mantiene su proporción fina sin deformarse</span> · 
           <span><b>Supr</b> para borrar</span> · 
-          <span><b>Flechas</b> para ajuste fino</span>
+          <span><b>Flechas</b> para mover fino</span>
         </div>
       </div>
     </main>

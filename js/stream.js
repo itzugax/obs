@@ -116,11 +116,11 @@
       w.style.textShadow = "3px 3px 8px rgba(0,0,0,0.9)";
       w.style.fontFamily = el.fontFamily || "'Comic Sans MS', 'Comic Sans', cursive";
       w.style.paintOrder = "stroke fill";
-      var baseFs = el.fontSize || 56;
-      var hRatio = (el.h || 0.08) / 0.08;
-      var dynFs = Math.max(8, Math.min(Math.round(baseFs * hRatio), 600));
+      var boxHeightPx = (el.h || 0.08) * 1080;
+      var userScale = (el.fontSize || 56) / 56;
+      var dynFs = Math.max(12, Math.round(boxHeightPx * 0.60 * userScale));
       w.style.fontSize = dynFs + "px";
-      var strokeW = (el.strokeWidth != null ? el.strokeWidth : 5);
+      var strokeW = Math.max(2, Math.round(dynFs * 0.08));
       w.style.webkitTextStroke = strokeW + "px " + (el.strokeColor || "#000000");
       w.style.display = "flex";
       w.style.alignItems = "center";

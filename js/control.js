@@ -24,7 +24,6 @@
   }
 
   function init() {
-    // Resolve Stream ID from URL or config
     var urlParams = new URLSearchParams(window.location.search);
     streamId = urlParams.get("room") || (typeof STREAM_ID !== "undefined" && STREAM_ID) || "sala-stream-demo";
 
@@ -81,34 +80,31 @@
           render();
         });
 
-        // Connection status & Latency monitor
         db.ref(".info/connected").on("value", function(snap) {
           var on = snap.val() === true;
           if (dotEl) dotEl.className = "dot" + (on ? " on" : "");
-          if (connTxt) connTxt.textContent = on ? "Conectado" : "Desconectado :(";
+          if (connTxt) connTxt.textContent = on ? "Conectao papu" : "Se cayó el server F";
         });
 
-        // Latency ping
         setInterval(function() {
           if (!db) return;
           var t0 = Date.now();
           db.ref(".info/serverTimeOffset").once("value", function() {
             var ping = Math.max(1, Math.round(Date.now() - t0));
-            if (pingBadge) pingBadge.textContent = ping + " ms";
+            if (pingBadge) pingBadge.textContent = "⚡ " + ping + " ms";
           });
         }, 8000);
 
-        // OBS Presence listener
         db.ref("streams/" + streamId + "/presence/obs").on("value", function(snap) {
           var val = snap.val();
           var isLive = val && (Date.now() - val < 12000);
           if (obsBadge) {
             if (isLive) {
               obsBadge.className = "obs-badge online";
-              obsBadge.innerHTML = "&#128225; OBS: En Vivo";
+              obsBadge.innerHTML = "&#128225; OBS: Ta prend\u00EDo";
             } else {
               obsBadge.className = "obs-badge";
-              obsBadge.innerHTML = "&#128225; OBS: Sin cliente";
+              obsBadge.innerHTML = "&#128225; OBS: Ta apagao mano";
             }
           }
         });
@@ -153,14 +149,14 @@
         var obsUrl = base + "obs.html?room=" + encodeURIComponent(streamId);
 
         navigator.clipboard.writeText(obsUrl).then(function() {
-          btnCopy.textContent = "\u2705 \u00A1Copiado!";
+          btnCopy.textContent = "\u2705 \u00A1Copiado fino!";
           btnCopy.classList.add("copied");
           setTimeout(function() {
             btnCopy.innerHTML = "&#128203; Copiar Link OBS";
             btnCopy.classList.remove("copied");
           }, 2000);
         }).catch(function() {
-          prompt("Copia este enlace para el Browser Source de OBS:", obsUrl);
+          prompt("Copia este link pa meterlo al Browser Source de OBS:", obsUrl);
         });
       });
     }
@@ -182,7 +178,7 @@
     var btnClearAll = document.getElementById("btn-clear-all");
     if (btnClearAll) {
       btnClearAll.addEventListener("click", function() {
-        if (!confirm("\u00BFEst\u00E1s seguro de eliminar TODAS las capas del stream?")) return;
+        if (!confirm("\u00BFSeguro que quieres mandar to a la verga y limpiar el stream?")) return;
         if (roomRef) roomRef.remove();
         closeEdit();
         selectedId = null;
@@ -213,10 +209,10 @@
     if (!btn) return;
     btn.addEventListener("click", function() {
       var u = document.getElementById("urlIn").value.trim();
-      if (!u) { alert("Pega una URL primero"); return; }
+      if (!u) { alert("Pega un link primero mano xD"); return; }
       var t = detectType(u);
-      if (!t) { alert("No se pudo detectar tipo. Usa JPG, PNG, GIF, WEBP, MP4, WEBM o MP3."); return; }
-      if (!roomRef) { alert("Sin conexión a Firebase. Recarga la página."); return; }
+      if (!t) { alert("No se pudo detectar el formato. Pon JPG, PNG, GIF, MP4 o MP3 pe."); return; }
+      if (!roomRef) { alert("Sin conexi\u00F3n a Firebase papu. F5 para revivir."); return; }
       var id = roomRef.push().key;
       var base = {
         type: t, url: u, x: 0.1, y: 0.1, w: 0.35, h: 0.25,
@@ -239,12 +235,12 @@
     if (!btn) return;
     btn.addEventListener("click", function() {
       var txt = document.getElementById("txtIn").value.trim();
-      if (!txt) { alert("Escribe algo primero"); return; }
-      if (!roomRef) { alert("Sin conexión a Firebase. Recarga la página."); return; }
+      if (!txt) { alert("Escribe algo pe, no lo dejes vac\u00EDo xD"); return; }
+      if (!roomRef) { alert("Sin conexi\u00F3n a Firebase papu. F5 para revivir."); return; }
       var id = roomRef.push().key;
       roomRef.child(id).set({
         type: "text",
-        x: 0.1, y: 0.1, w: 0.45, h: 0.12,
+        x: 0.1, y: 0.1, w: 0.40, h: 0.10,
         z: Date.now(), opacity: 100, visible: true,
         name: shortName(txt), locked: false,
         text: txt, fontSize: 56,
@@ -317,7 +313,7 @@
             if (t === "video") { base.volume = 100; base.loop = false; base.objectFit = "contain"; }
             roomRef.child(id).set(base);
             it.querySelector("span:last-child").className = "ok";
-            it.querySelector("span:last-child").textContent = "Listo";
+            it.querySelector("span:last-child").textContent = "Listo rey";
             selectRow(id);
             openEdit(id);
           })
@@ -364,6 +360,7 @@
           cel.style.top = "0%";
           cel.style.width = "100%";
           cel.style.height = "100%";
+          if (state[editingId].type === "text") updateTextSize(cel, state[editingId], 1);
         }
         syncEdit();
         roomRef.child(editingId).update({ x: 0, y: 0, w: 1, h: 1 });
@@ -418,8 +415,8 @@
     });
 
     if (tbDel) tbDel.addEventListener("click", function() {
-      if (!selectedId) { alert("Selecciona una capa primero"); return; }
-      if (confirm("¿Eliminar capa seleccionada?")) {
+      if (!selectedId) { alert("Selecciona una capa primero mano"); return; }
+      if (confirm("\u00BFVas a borrar esta capa mi rey?")) {
         var toDel = selectedId;
         if (roomRef) roomRef.child(toDel).remove();
         if (editingId === toDel) closeEdit();
@@ -428,17 +425,17 @@
     });
 
     if (tbUp) tbUp.addEventListener("click", function() {
-      if (!selectedId) { alert("Selecciona una capa primero"); return; }
+      if (!selectedId) { alert("Selecciona una capa primero mano"); return; }
       bringToFront(selectedId);
     });
 
     if (tbDown) tbDown.addEventListener("click", function() {
-      if (!selectedId) { alert("Selecciona una capa primero"); return; }
+      if (!selectedId) { alert("Selecciona una capa primero mano"); return; }
       sendToBack(selectedId);
     });
 
     if (tbClone) tbClone.addEventListener("click", function() {
-      if (!selectedId) { alert("Selecciona una capa primero"); return; }
+      if (!selectedId) { alert("Selecciona una capa primero mano"); return; }
       duplicateLayer(selectedId);
     });
   }
@@ -490,7 +487,7 @@
 
       if (e.key === "Delete" || e.key === "Backspace") {
         e.preventDefault();
-        if (confirm("¿Eliminar capa seleccionada?")) {
+        if (confirm("\u00BFVas a borrar esta capa mi rey?")) {
           var toDel = selectedId;
           if (roomRef) roomRef.child(toDel).remove();
           if (editingId === toDel) closeEdit();
@@ -540,7 +537,7 @@
     }, 25);
   }
 
-  /* === interact.js Setup === */
+  /* === interact.js Setup (Always Locked Aspect Ratio) === */
   function initInteract() {
     interact("#canvas .el")
       .draggable({
@@ -605,16 +602,18 @@
               openEdit(id);
             }
             var cur = POS_MAP[id] || { x: 0.1, y: 0.1, w: 0.3, h: 0.08 };
+            var initW = cur.w || 0.3;
+            var initH = cur.h || 0.08;
             _startState = {
               x: cur.x || 0,
               y: cur.y || 0,
-              w: cur.w || 0.3,
-              h: cur.h || 0.08,
-              right: (cur.x || 0) + (cur.w || 0.3),
-              bottom: (cur.y || 0) + (cur.h || 0.08),
+              w: initW,
+              h: initH,
+              right: (cur.x || 0) + initW,
+              bottom: (cur.y || 0) + initH,
               clientX: e.clientX,
               clientY: e.clientY,
-              aspect: (cur.w || 0.3) / Math.max(0.001, cur.h || 0.08)
+              aspect: initW / Math.max(0.001, initH)
             };
             e.target.classList.add("resizing");
           },
@@ -627,43 +626,50 @@
             var dx = (e.clientX - _startState.clientX) / cr.width;
             var dy = (e.clientY - _startState.clientY) / cr.height;
 
-            var minW = 0.02;
-            var minH = 0.02;
+            var aspect = _startState.aspect || (0.3 / 0.08);
+            var minW = 0.03;
+            var minH = minW / aspect;
 
             var x = _startState.x;
             var y = _startState.y;
             var w = _startState.w;
             var h = _startState.h;
 
-            if (e.edges.right) {
-              w = Math.max(minW, Math.min(1 - _startState.x, _startState.w + dx));
-            } else if (e.edges.left) {
-              var newX = Math.max(0, Math.min(_startState.right - minW, _startState.x + dx));
-              w = _startState.right - newX;
-              x = newX;
-            }
-
-            if (e.edges.bottom) {
-              h = Math.max(minH, Math.min(1 - _startState.y, _startState.h + dy));
-            } else if (e.edges.top) {
-              var newY = Math.max(0, Math.min(_startState.bottom - minH, _startState.y + dy));
-              h = _startState.bottom - newY;
-              y = newY;
-            }
-
-            var isCorner = (e.edges.left || e.edges.right) && (e.edges.top || e.edges.bottom);
-            if (e.shiftKey && isCorner && _startState.aspect > 0) {
-              var candidateH = w / _startState.aspect;
-              if (e.edges.top && _startState.bottom - candidateH < 0) {
-                candidateH = _startState.bottom;
-                w = candidateH * _startState.aspect;
-              } else if (e.edges.bottom && _startState.y + candidateH > 1) {
-                candidateH = 1 - _startState.y;
-                w = candidateH * _startState.aspect;
-              }
-              h = candidateH;
-              if (e.edges.left) x = _startState.right - w;
-              if (e.edges.top) y = _startState.bottom - h;
+            // LOCKED PROPORTIONAL RESIZE FOR ANY HANDLE (Never distorts or gets thin/thick)
+            if (e.edges.right && e.edges.bottom) { // SE
+              var d = (Math.abs(dx) > Math.abs(dy)) ? dx : (dy * aspect);
+              w = Math.max(minW, Math.min(1 - _startState.x, (1 - _startState.y) * aspect, _startState.w + d));
+              h = w / aspect;
+            } else if (e.edges.left && e.edges.bottom) { // SW
+              var d = (Math.abs(dx) > Math.abs(dy)) ? -dx : (dy * aspect);
+              w = Math.max(minW, Math.min(_startState.right, (1 - _startState.y) * aspect, _startState.w + d));
+              h = w / aspect;
+              x = _startState.right - w;
+            } else if (e.edges.right && e.edges.top) { // NE
+              var d = (Math.abs(dx) > Math.abs(dy)) ? dx : (-dy * aspect);
+              w = Math.max(minW, Math.min(1 - _startState.x, _startState.bottom * aspect, _startState.w + d));
+              h = w / aspect;
+              y = _startState.bottom - h;
+            } else if (e.edges.left && e.edges.top) { // NW
+              var d = (Math.abs(dx) > Math.abs(dy)) ? -dx : (-dy * aspect);
+              w = Math.max(minW, Math.min(_startState.right, _startState.bottom * aspect, _startState.w + d));
+              h = w / aspect;
+              x = _startState.right - w;
+              y = _startState.bottom - h;
+            } else if (e.edges.right) { // E
+              w = Math.max(minW, Math.min(1 - _startState.x, (1 - _startState.y) * aspect, _startState.w + dx));
+              h = w / aspect;
+            } else if (e.edges.left) { // W
+              w = Math.max(minW, Math.min(_startState.right, (1 - _startState.y) * aspect, _startState.w - dx));
+              h = w / aspect;
+              x = _startState.right - w;
+            } else if (e.edges.bottom) { // S
+              h = Math.max(minH, Math.min(1 - _startState.y, (1 - _startState.x) / aspect, _startState.h + dy));
+              w = h * aspect;
+            } else if (e.edges.top) { // N
+              h = Math.max(minH, Math.min(_startState.bottom, (1 - _startState.x) / aspect, _startState.h - dy));
+              w = h * aspect;
+              y = _startState.bottom - h;
             }
 
             POS_MAP[id] = { x: x, y: y, w: w, h: h };
@@ -672,6 +678,7 @@
             e.target.style.width = (w * 100) + "%";
             e.target.style.height = (h * 100) + "%";
 
+            // If text element, auto-scale font size with box height immediately
             if (state[id] && state[id].type === "text") {
               updateTextSize(e.target, state[id], h);
             }
@@ -764,7 +771,7 @@
       wrap.style.color = el.textColor || "#ffffff";
       wrap.style.fontWeight = "bold";
       wrap.style.fontStyle = "normal";
-      wrap.style.lineHeight = "1.2";
+      wrap.style.lineHeight = "1.1";
       wrap.style.textShadow = "2px 2px 6px rgba(0,0,0,0.9)";
       wrap.style.fontFamily = el.fontFamily || "'Comic Sans MS', 'Comic Sans', cursive";
       wrap.style.paintOrder = "stroke fill";
@@ -821,11 +828,11 @@
     var wrap = elDom.querySelector(".media-wrap");
     if (!wrap) return;
     var ch = canvas.clientHeight || 360;
-    var baseFs = elData.fontSize || 56;
-    var scaledFs = (baseFs / 1080) * ch * ((hVal || 0.08) / 0.08);
-    var dynFs = Math.max(8, Math.min(Math.round(scaledFs), 300));
+    var boxHeightPx = (hVal || 0.08) * ch;
+    var userScale = (elData.fontSize || 56) / 56;
+    var dynFs = Math.max(10, Math.round(boxHeightPx * 0.60 * userScale));
     wrap.style.fontSize = dynFs + "px";
-    var strokeW = Math.max(1, Math.round((elData.strokeWidth != null ? elData.strokeWidth : 5) * (ch / 1080)));
+    var strokeW = Math.max(1, Math.round(dynFs * 0.08));
     wrap.style.webkitTextStroke = strokeW + "px " + (elData.strokeColor || "#000000");
   }
 
@@ -886,7 +893,7 @@
       '<button class="ibtn eye-btn" title="Mostrar/Ocultar">&#128065;</button>' +
       '<button class="ibtn lock-btn" title="Bloquear/Desbloquear">&#128275;</button>' +
       '<button class="ibtn edit-btn" title="Editar">&#9998;</button>' +
-      '<button class="ibtn danger del-btn" title="Eliminar">&#10005;</button>';
+      '<button class="ibtn danger del-btn" title="Borrar">&#10005;</button>';
 
     r.addEventListener("click", function(e) {
       if (e.target.closest(".ibtn")) return;
@@ -919,7 +926,7 @@
 
     r.querySelector(".del-btn").addEventListener("click", function(e) {
       e.stopPropagation();
-      if (confirm("¿Eliminar esta capa?")) {
+      if (confirm("\u00BFVas a borrar esta capa mi rey?")) {
         if (roomRef) roomRef.child(id).remove();
         if (editingId === id) closeEdit();
         if (selectedId === id) selectedId = null;
@@ -952,7 +959,7 @@
     } else {
       lock.innerHTML = "&#128275;";
       lock.className = "ibtn lock-btn";
-      lock.title = "Bloquear capa";
+      lock.title = "Bloquear capa pa no cagarla";
     }
 
     if (el.visible === false) r.classList.add("off");
@@ -1002,7 +1009,6 @@
     mf.innerHTML = "";
     tf.innerHTML = "";
 
-    // Text specific edit fields
     if (el.type === "text") {
       tf.innerHTML =
         '<div class="edit-group"><label>Texto</label>' +
@@ -1018,12 +1024,12 @@
         '      <option value="\'Courier New\', monospace">Courier New</option>' +
         '    </select>' +
         '  </div>' +
-        '  <div class="edit-group"><label>Tamaño (' + (el.fontSize || 56) + 'px)</label>' +
-        '    <input type="range" id="ed-fontsize" min="16" max="140" value="' + (el.fontSize || 56) + '">' +
+        '  <div class="edit-group"><label>Tamaño Relativo (' + (el.fontSize || 56) + ')</label>' +
+        '    <input type="range" id="ed-fontsize" min="20" max="120" value="' + (el.fontSize || 56) + '">' +
         '  </div>' +
         '</div>' +
         '<div class="grid2">' +
-        '  <div class="edit-group"><label>Color Texto</label>' +
+        '  <div class="edit-group"><label>Color Letras</label>' +
         '    <input type="color" id="ed-textcolor" value="' + (el.textColor || "#ffffff") + '">' +
         '  </div>' +
         '  <div class="edit-group"><label>Color Borde</label>' +
@@ -1081,17 +1087,16 @@
       }, 50);
     }
 
-    // Audio / Video specific edit fields (Replay Trigger & Volume)
     if (el.type === "audio" || el.type === "video") {
       mf.innerHTML =
-        '<button class="replay-btn" id="btn-replay-stream">&#9654; Reproducir / Disparar en OBS</button>' +
-        (el.type === "audio" ? '<button class="btn" id="btn-local-preview" style="margin-bottom:8px">&#128266; Escuchar en Moderador</button>' : '') +
+        '<button class="replay-btn" id="btn-replay-stream">&#9654; Tirar / Replay en el stream</button>' +
+        (el.type === "audio" ? '<button class="btn" id="btn-local-preview" style="margin-bottom:8px">&#128266; Escuchar en aud\u00EDfonos</button>' : '') +
         '<div class="edit-group"><label>Volumen (' + (el.volume != null ? el.volume : 100) + '%)</label>' +
         '<div style="display:flex;align-items:center;gap:8px">' +
         '<input type="range" id="ed-volume" min="0" max="100" value="' + (el.volume != null ? el.volume : 100) + '" style="flex:1">' +
         '<span id="ed-volume-val" style="font-size:12px;width:32px;text-align:right;font-weight:600">' + (el.volume != null ? el.volume : 100) + '</span>' +
         '</div></div>' +
-        '<div class="check-row"><label><input type="checkbox" id="ed-loop"' + (el.loop ? " checked" : "") + '> Repetir en bucle</label></div>';
+        '<div class="check-row"><label><input type="checkbox" id="ed-loop"' + (el.loop ? " checked" : "") + '> Bucle infinito</label></div>';
 
       setTimeout(function() {
         bindRange("ed-volume", "volume");
@@ -1110,14 +1115,14 @@
         var localBtn = document.getElementById("btn-local-preview");
         if (localBtn) {
           localBtn.addEventListener("click", function() {
-            if (_localAudio) { _localAudio.pause(); _localAudio = null; localBtn.innerHTML = "&#128266; Escuchar en Moderador"; return; }
+            if (_localAudio) { _localAudio.pause(); _localAudio = null; localBtn.innerHTML = "&#128266; Escuchar en aud\u00EDfonos"; return; }
             if (!el.url) return;
             _localAudio = new Audio(el.url);
             _localAudio.volume = (el.volume != null ? el.volume : 100) / 100;
             _localAudio.play();
             localBtn.innerHTML = "&#9208; Pausar Audio";
             _localAudio.onended = function() {
-              localBtn.innerHTML = "&#128266; Escuchar en Moderador";
+              localBtn.innerHTML = "&#128266; Escuchar en aud\u00EDfonos";
               _localAudio = null;
             };
           });
@@ -1166,7 +1171,7 @@
     }
 
     document.getElementById("ed-del").onclick = function() {
-      if (confirm("¿Eliminar esta capa?")) {
+      if (confirm("\u00BFVas a borrar esta capa mi rey?")) {
         if (roomRef) roomRef.child(id).remove();
         closeEdit();
         if (selectedId === id) selectedId = null;
@@ -1250,4 +1255,5 @@
   }
 
 })();
+
 
