@@ -129,109 +129,165 @@
       box.addEventListener("focus", function() { box.select(); });
     });
 
-    // === Submit ===
+    var _rickrollAudio = null;
+    function playRickroll() {
+      try {
+        if (_rickrollAudio) { _rickrollAudio.pause(); _rickrollAudio.currentTime = 0; }
+        _rickrollAudio = new Audio("https://www.myinstants.com/media/sounds/rickroll.mp3");
+        _rickrollAudio.volume = 0.6;
+        _rickrollAudio.play().catch(function(){});
+        setTimeout(function() { if (_rickrollAudio) { _rickrollAudio.pause(); _rickrollAudio = null; } }, 6000);
+      } catch(e) {}
+    }
+
+    var pinModal = document.getElementById("modal-pin");
+    var pinInput = document.getElementById("modal-pin-input");
+    var pinErrorBox = document.getElementById("pin-error-box");
+    var pinErrorText = document.getElementById("pin-error-text");
+    var pinRoomLabel = document.getElementById("pin-modal-room-code");
+    var pinHint = document.getElementById("pin-modal-hint");
+    var btnVerifyPin = document.getElementById("btn-verify-pin");
+    var btnCancelPin = document.getElementById("btn-cancel-pin");
+    var btnClosePin = document.getElementById("btn-close-pin");
+
+    var _pendingUsername = "";
+    var _pendingRoomCode = "";
+    var _pendingRoom = "";
+
+    function showPinError(msg) {
+      if (pinErrorBox) { pinErrorBox.style.display = "flex"; pinErrorBox.style.animation = "none"; pinErrorBox.offsetHeight; pinErrorBox.style.animation = "shakeMeme 0.4s ease-in-out"; }
+      if (pinErrorText) pinErrorText.textContent = msg;
+      playRickroll();
+      if (btnVerifyPin) { btnVerifyPin.textContent = "VERIFICAR Y ENTRAR"; btnVerifyPin.disabled = false; }
+    }
+
+    function closePinModal() {
+      if (pinModal) pinModal.style.display = "none";
+      if (pinInput) pinInput.value = "";
+      if (pinErrorBox) pinErrorBox.style.display = "none";
+      if (_rickrollAudio) { _rickrollAudio.pause(); _rickrollAudio = null; }
+      btnEnter.textContent = "ENTRAR AL PANEL";
+      btnEnter.disabled = false;
+    }
+
+    if (btnCancelPin) btnCancelPin.addEventListener("click", closePinModal);
+    if (btnClosePin) btnClosePin.addEventListener("click", closePinModal);
+
     function attemptEnter() {
       var username = (inUser ? inUser.value.trim() : "").toLowerCase().replace(/[^a-z0-9_.-]/g, "") || _currentUser.name;
       var roomCode = digits.map(function(d) { return d.value; }).join("");
-      var pin = (inPin ? inPin.value.trim() : "");
 
-      if (!username || username.length < 2) { 
-        errEl.textContent = "El username debe tener al menos 2 caracteres"; 
-        if (inUser) inUser.focus(); 
-        return; 
+      if (!username || username.length < 2) {
+        errEl.textContent = "El username debe tener al menos 2 caracteres";
+        if (inUser) inUser.focus();
+        return;
       }
-      if (roomCode.length !== 6 || /[^0-9]/.test(roomCode)) { 
-        errEl.textContent = "El código de sala son 6 dígitos exactos"; 
-        digits[0].focus(); 
-        return; 
-      }
-      if (!pin) { 
-        errEl.textContent = "Pon el PIN de la sala"; 
-        if (inPin) inPin.focus(); 
-        return; 
+      if (roomCode.length !== 6 || /[^0-9]/.test(roomCode)) {
+        errEl.textContent = "El código de sala son 6 dígitos exactos";
+        digits[0].focus();
+        return;
       }
 
       var room = "sala-" + roomCode;
-
       btnEnter.textContent = "Verificando...";
       btnEnter.disabled = true;
       errEl.textContent = "";
 
-      // Initialize Firebase if needed
       var fbApp;
       try { fbApp = firebase.app(); } catch(e) {
         if (typeof firebaseConfig !== "undefined") fbApp = firebase.initializeApp(firebaseConfig);
       }
-
       var fbDb = (typeof firebase !== "undefined" && firebase.database) ? firebase.database() : null;
 
       if (fbDb) {
         try {
-          // 1. Check Unique Username across Firebase
           var userRegRef = fbDb.ref("users_registry/" + username);
           userRegRef.once("value", function(userSnap) {
             var regData = userSnap.val();
             if (regData && regData.uid && regData.uid !== _currentUser.uid) {
-              errEl.textContent = "❌ El username @" + username + " ya está en uso por otro usuario. Elige otro.";
+              errEl.textContent = "❌ El username @" + username + " ya está en uso. Elige otro.";
+              playRickroll();
               btnEnter.textContent = "ENTRAR AL PANEL";
               btnEnter.disabled = false;
               if (inUser) inUser.focus();
               return;
             }
-
-            // Claim / update username ownership for current user
-            userRegRef.set({
-              uid: _currentUser.uid,
-              name: username,
-              photoURL: _currentUser.photoURL,
-              ts: Date.now()
-            });
-
-            // 2. Check Room PIN
-            var pinRef = fbDb.ref("rooms/" + room + "/pin");
-            pinRef.once("value", function(snap) {
-              var storedPin = snap.val();
-              if (!storedPin) {
-                pinRef.set(pin, function(err) {
-                  if (err) {
-                    errEl.textContent = "Error guardando el PIN";
-                    btnEnter.textContent = "ENTRAR AL PANEL"; btnEnter.disabled = false;
-                    return;
-                  }
-                  saveThenLaunch(username, roomCode, room);
-                });
-              } else if (storedPin === pin) {
-                saveThenLaunch(username, roomCode, room);
-              } else {
-                errEl.textContent = "❌ PIN incorrecto";
-                btnEnter.textContent = "ENTRAR AL PANEL"; btnEnter.disabled = false;
-                if (inPin) { inPin.value = ""; inPin.focus(); }
-              }
-            }, function(err) {
-              localPinCheck(username, roomCode, room, pin);
-            });
-          }, function(err) {
-            localPinCheck(username, roomCode, room, pin);
+            userRegRef.set({ uid: _currentUser.uid, name: username, photoURL: _currentUser.photoURL, ts: Date.now() });
+            openPinModal(username, roomCode, room);
+          }, function() {
+            openPinModal(username, roomCode, room);
           });
         } catch(ex) {
-          localPinCheck(username, roomCode, room, pin);
+          openPinModal(username, roomCode, room);
         }
       } else {
-        localPinCheck(username, roomCode, room, pin);
+        openPinModal(username, roomCode, room);
       }
     }
+
+    function openPinModal(username, roomCode, room) {
+      _pendingUsername = username;
+      _pendingRoomCode = roomCode;
+      _pendingRoom = room;
+      if (pinRoomLabel) pinRoomLabel.textContent = roomCode;
+      if (pinInput) { pinInput.value = ""; }
+      if (pinErrorBox) pinErrorBox.style.display = "none";
+      if (pinModal) pinModal.style.display = "flex";
+      if (pinHint) pinHint.textContent = "Si la sala es nueva, este PIN quedará guardado como clave";
+      if (btnVerifyPin) { btnVerifyPin.textContent = "VERIFICAR Y ENTRAR"; btnVerifyPin.disabled = false; }
+      setTimeout(function() { if (pinInput) pinInput.focus(); }, 100);
+    }
+
+    function verifyPin() {
+      var pin = (pinInput ? pinInput.value.trim() : "");
+      if (!pin) { showPinError("👉😹 Escribe el PIN primero jajaja"); return; }
+      if (btnVerifyPin) { btnVerifyPin.textContent = "Verificando..."; btnVerifyPin.disabled = true; }
+
+      var fbDb = (typeof firebase !== "undefined" && firebase.database) ? firebase.database() : null;
+      if (fbDb) {
+        try {
+          var pinRef = fbDb.ref("rooms/" + _pendingRoom + "/pin");
+          pinRef.once("value", function(snap) {
+            var storedPin = snap.val();
+            if (!storedPin) {
+              pinRef.set(pin, function(err) {
+                if (err) { showPinError("👉😹 Error guardando PIN, intenta de nuevo"); return; }
+                closePinModal();
+                saveThenLaunch(_pendingUsername, _pendingRoomCode, _pendingRoom);
+              });
+            } else if (storedPin === pin) {
+              closePinModal();
+              saveThenLaunch(_pendingUsername, _pendingRoomCode, _pendingRoom);
+            } else {
+              showPinError("👉😹 PIN incorrecto jajaja, intenta de nuevo rey");
+              if (pinInput) { pinInput.value = ""; pinInput.focus(); }
+            }
+          }, function() {
+            localPinCheck(_pendingUsername, _pendingRoomCode, _pendingRoom, pin);
+          });
+        } catch(ex) {
+          localPinCheck(_pendingUsername, _pendingRoomCode, _pendingRoom, pin);
+        }
+      } else {
+        localPinCheck(_pendingUsername, _pendingRoomCode, _pendingRoom, pin);
+      }
+    }
+
+    if (btnVerifyPin) btnVerifyPin.addEventListener("click", verifyPin);
+    if (pinInput) pinInput.addEventListener("keydown", function(e) { if (e.key === "Enter") { e.preventDefault(); verifyPin(); } });
 
     function localPinCheck(username, roomCode, room, pin) {
       var savedPin = localStorage.getItem("ugax_pin_" + room);
       if (!savedPin) {
         localStorage.setItem("ugax_pin_" + room, pin);
+        closePinModal();
         saveThenLaunch(username, roomCode, room);
       } else if (savedPin === pin) {
+        closePinModal();
         saveThenLaunch(username, roomCode, room);
       } else {
-        errEl.textContent = "❌ PIN incorrecto";
-        btnEnter.textContent = "ENTRAR AL PANEL"; btnEnter.disabled = false;
-        if (inPin) { inPin.value = ""; inPin.focus(); }
+        showPinError("👉😹 PIN incorrecto jajaja, intenta de nuevo rey");
+        if (pinInput) { pinInput.value = ""; pinInput.focus(); }
       }
     }
 
@@ -240,14 +296,9 @@
       localStorage.setItem("ugax_user", username);
       localStorage.setItem("ugax_last_room", roomCode);
       saveRecentRoom(roomCode);
-
-      // Save active session for F5 refresh
       sessionStorage.setItem("ugax_active_session", JSON.stringify({
-        room: room,
-        user: username,
-        photo: _currentUser.photoURL
+        room: room, user: username, photo: _currentUser.photoURL
       }));
-
       launchApp(username, room);
     }
 
@@ -480,8 +531,6 @@
       pill.addEventListener("click", function() {
         if (/^\d{6}$/.test(code) && digits.length === 6) {
           code.split("").forEach(function(d, i) { digits[i].value = d; });
-          var inPin = document.getElementById("lobby-pin");
-          if (inPin) inPin.focus();
         }
       });
       grid.appendChild(pill);

@@ -82,12 +82,6 @@
           <span class="lobby-hint">El mismo código que uses en tu programa de streaming</span>
         </div>
 
-        <div class="lobby-group">
-          <label>PIN de Acceso</label>
-          <input type="password" id="lobby-pin" placeholder="Crea o ingresa el PIN de la sala" maxlength="12" required disabled autocomplete="off">
-          <span class="lobby-hint">Si la sala es nueva, este PIN queda guardado como clave</span>
-        </div>
-
         <button type="submit" class="btn-kick-primary" id="btn-enter-room" disabled>ENTRAR AL PANEL</button>
       </form>
     </div>
@@ -321,6 +315,34 @@
         <input type="text" id="login-user-input" placeholder="Tu apodo o canal (ej: itzugax)">
 
         <button class="btn primary" id="btn-save-login" style="margin-top:16px;width:100%">&#128190; Guardar Perfil</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PIN Prompt Modal -->
+  <div class="modal-overlay" id="modal-pin" style="display:none">
+    <div class="modal-card pin-modal-card">
+      <div class="modal-header">
+        <h3>🔒 PIN de Seguridad</h3>
+        <button class="modal-close" id="btn-close-pin">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="pin-modal-desc">Ingresa el PIN de acceso para la sala <b id="pin-modal-room-code" class="kick-green">------</b>:</p>
+        
+        <div class="lobby-group" style="margin-top:12px;">
+          <input type="password" id="modal-pin-input" placeholder="Ingresa el PIN de la sala" maxlength="12" autocomplete="off">
+          <span class="lobby-hint" id="pin-modal-hint">Si la sala es nueva, este PIN quedará guardado como clave</span>
+        </div>
+
+        <div id="pin-error-box" class="pin-error-box" style="display:none">
+          <span class="pin-error-meme">👉😹</span>
+          <span class="pin-error-text" id="pin-error-text">❌ PIN incorrecto jaja</span>
+        </div>
+
+        <div class="pin-modal-actions" style="display:flex;gap:8px;margin-top:16px;">
+          <button type="button" class="btn" id="btn-cancel-pin" style="flex:1">Cancelar</button>
+          <button type="button" class="btn-kick-primary" id="btn-verify-pin" style="flex:2">VERIFICAR Y ENTRAR</button>
+        </div>
       </div>
     </div>
   </div>
