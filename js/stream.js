@@ -1,5 +1,11 @@
-/* === Control de UGAX - OBS Stream Overlay === */
 (function() {
+  document.addEventListener("contextmenu", function(e) { e.preventDefault(); return false; });
+  document.addEventListener("keydown", function(e) {
+    if (e.key === "F12" || e.keyCode === 123) { e.preventDefault(); return false; }
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "I" || e.key === "i" || e.key === "J" || e.key === "j" || e.key === "C" || e.key === "c")) { e.preventDefault(); return false; }
+    if ((e.ctrlKey || e.metaKey) && (e.key === "u" || e.key === "U" || e.key === "s" || e.key === "S")) { e.preventDefault(); return false; }
+  });
+
   var state = {};
   var _tid = null;
   var _lastTriggers = {};

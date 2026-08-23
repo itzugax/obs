@@ -1,7 +1,11 @@
-/* === Control de UGAX - Panel de Moderación === */
 (function() {
+  document.addEventListener("contextmenu", function(e) { e.preventDefault(); return false; });
+  document.addEventListener("keydown", function(e) {
+    if (e.key === "F12" || e.keyCode === 123) { e.preventDefault(); return false; }
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "I" || e.key === "i" || e.key === "J" || e.key === "j" || e.key === "C" || e.key === "c")) { e.preventDefault(); return false; }
+    if ((e.ctrlKey || e.metaKey) && (e.key === "u" || e.key === "U" || e.key === "s" || e.key === "S")) { e.preventDefault(); return false; }
+  });
 
-  /* === State === */
   var state = {};
   var editingId = null;
   var selectedId = null;
@@ -13,14 +17,12 @@
   var _localAudio = null;
   var streamId = "sala-stream-demo";
 
-  /* Current User Profile */
   var _currentUser = {
     uid: "guest-" + Math.floor(Math.random() * 8999 + 1000),
     name: localStorage.getItem("ugax_user") || "",
     photoURL: localStorage.getItem("ugax_user_photo") || ""
   };
 
-  /* === DOM refs === */
   var canvas, listEl, emptyEl, countEl, editSec, edTitleType, edNameInput, dotEl, connTxt, obsBadge, pingBadge;
 
   /* === Init on DOM ready === */
