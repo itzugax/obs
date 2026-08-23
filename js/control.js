@@ -106,19 +106,15 @@
   var MEME_SOUNDS = [
     { id: "vine_boom", name: "Vine Boom", icon: "\uD83D\uDCA5", url: "https://www.myinstants.com/media/sounds/vine-boom.mp3" },
     { id: "bruh", name: "Bruh", icon: "\uD83C\uDFBA", url: "https://www.myinstants.com/media/sounds/movie_1.mp3" },
-    { id: "emotional_damage", name: "Emotional Damage", icon: "\uD83D\uDC76", url: "https://www.myinstants.com/media/sounds/emotional-damage-meme.mp3" },
     { id: "taco_bell", name: "Taco Bell", icon: "\uD83D\uDCA3", url: "https://www.myinstants.com/media/sounds/taco-bell-bong-sfx.mp3" },
     { id: "sad_trombone", name: "Sad Trombone", icon: "\uD83D\uDCC9", url: "https://www.myinstants.com/media/sounds/sadtrombone.mp3" },
     { id: "metal_pipe", name: "Metal Pipe", icon: "\uD83E\uDD16", url: "https://www.myinstants.com/media/sounds/metal-pipe-clang.mp3" },
     { id: "discord", name: "Discord Ping", icon: "\uD83D\uDD14", url: "https://www.myinstants.com/media/sounds/discord-notification.mp3" },
     { id: "badum_tss", name: "Ba Dum Tss!", icon: "\uD83E\uDD41", url: "https://www.myinstants.com/media/sounds/ba-dum-tss.mp3" },
     { id: "aplausos", name: "Aplausos", icon: "\uD83D\uDC4F", url: "https://www.myinstants.com/media/sounds/applause_2.mp3" },
-    { id: "cuac", name: "Cuac / Quack", icon: "\uD83E\uDD86", url: "https://www.myinstants.com/media/sounds/quack.mp3" },
     { id: "airhorn", name: "Airhorn MLG", icon: "\uD83D\uDCE2", url: "https://www.myinstants.com/media/sounds/mlg-airhorn.mp3" },
     { id: "oof", name: "Oof Roblox", icon: "\uD83D\uDC80", url: "https://www.myinstants.com/media/sounds/roblox-death-sound_1.mp3" },
-    { id: "gigachad", name: "Giga Chad", icon: "\uD83D\uDDFF", url: "https://www.myinstants.com/media/sounds/gigachad.mp3" },
     { id: "fart", name: "Fart Reverb", icon: "\uD83D\uDCA8", url: "https://www.myinstants.com/media/sounds/fart-with-reverb.mp3" },
-    { id: "grillos", name: "Cri-Cri Grillos", icon: "\uD83E\uDD97", url: "https://www.myinstants.com/media/sounds/crickets.mp3" },
     { id: "win_error", name: "Windows Error", icon: "\uD83D\uDCBB", url: "https://www.myinstants.com/media/sounds/windows-xp-error.mp3" }
   ];
 
