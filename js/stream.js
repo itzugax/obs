@@ -94,7 +94,7 @@
       var dynFs = Math.max(8, Math.round(baseFs * hRatio));
       w.style.fontSize = dynFs + "px";
       w.style.lineHeight = "1.2";
-      w.style.webkitTextStroke = "3px #000000";
+      w.style.webkitTextStroke = "5px #000000";
       w.style.textShadow = "2px 2px 6px rgba(0,0,0,0.8)";
       w.style.display = "flex";
       w.style.alignItems = "center";

@@ -627,8 +627,62 @@ main {
   background: var(--accent);
   border-radius: 2px;
   cursor: nwse-resize;
-  opacity: 0.8;
+  opacity: 0;
   border: 2px solid var(--bg);
+  transition: opacity 0.15s;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.el:hover .media-wrap::after,
+.el.selected .media-wrap::after {
+  opacity: 0.8;
+}
+
+.resize-top, .resize-right, .resize-bottom, .resize-left {
+  position: absolute;
+  z-index: 10;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.el:hover .resize-top,
+.el:hover .resize-right,
+.el:hover .resize-bottom,
+.el:hover .resize-left {
+  opacity: 1;
+}
+
+.resize-top {
+  top: -4px; left: 8px; right: 8px; height: 8px;
+  cursor: ns-resize;
+  background: var(--accent);
+  border-radius: 2px 2px 0 0;
+  opacity: 0;
+}
+
+.resize-bottom {
+  bottom: -4px; left: 8px; right: 8px; height: 8px;
+  cursor: ns-resize;
+  background: var(--accent);
+  border-radius: 0 0 2px 2px;
+  opacity: 0;
+}
+
+.resize-left {
+  left: -4px; top: 8px; bottom: 8px; width: 8px;
+  cursor: ew-resize;
+  background: var(--accent);
+  border-radius: 2px 0 0 2px;
+  opacity: 0;
+}
+
+.resize-right {
+  right: -4px; top: 8px; bottom: 8px; width: 8px;
+  cursor: ew-resize;
+  background: var(--accent);
+  border-radius: 0 2px 2px 0;
+  opacity: 0;
 }
 
 .el img, .el video {

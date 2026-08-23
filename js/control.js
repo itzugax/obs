@@ -318,22 +318,19 @@
         }
       }
     }).resizable({
-      edges: { left: true, right: true, bottom: true, top: true },
+      edges: { left: ".resize-left", right: ".resize-right", top: ".resize-top", bottom: ".resize-bottom" },
       listeners: {
         move: function(e) {
           var id = e.target.getAttribute("data-id");
           if (!id || !state[id] || state[id].locked) return;
-          var r = canvas.getBoundingClientRect();
-          var nw = Math.max(0.03, e.rect.width / r.width);
-          var nh = Math.max(0.03, e.rect.height / r.height);
-          var nx = (POS_MAP[id].x || 0) + (e.dx / r.width);
-          var ny = (POS_MAP[id].y || 0) + (e.dy / r.height);
+          var cr = canvas.getBoundingClientRect();
+          var nx = (e.rect.left - cr.left) / cr.width;
+          var ny = (e.rect.top - cr.top) / cr.height;
+          var nw = Math.max(0.03, e.rect.width / cr.width);
+          var nh = Math.max(0.03, e.rect.height / cr.height);
           nx = Math.max(0, Math.min(1 - nw, nx));
           ny = Math.max(0, Math.min(1 - nh, ny));
-          POS_MAP[id].x = nx;
-          POS_MAP[id].y = ny;
-          POS_MAP[id].w = nw;
-          POS_MAP[id].h = nh;
+          POS_MAP[id] = { x: nx, y: ny, w: nw, h: nh };
           e.target.style.left = (nx * 100) + "%";
           e.target.style.top = (ny * 100) + "%";
           e.target.style.width = (nw * 100) + "%";
@@ -413,7 +410,7 @@
       var dynFs = Math.max(8, Math.round(baseFs * hRatio));
       wrap.style.fontSize = dynFs + "px";
       wrap.style.lineHeight = "1.2";
-      wrap.style.webkitTextStroke = "3px #000000";
+      wrap.style.webkitTextStroke = "5px #000000";
       wrap.style.textShadow = "2px 2px 6px rgba(0,0,0,0.8)";
       wrap.innerHTML = "<span>" + esc(el.text || "") + "</span>";
     } else if (el.type === "audio") {
@@ -442,7 +439,12 @@
   function mkDiv(el) {
     var d = document.createElement("div");
     var tagText = el.type === "image" ? (el.name || "") : "";
-    d.innerHTML = '<div class="media-wrap"><span class="tag">' + esc(tagText) + '</span></div>';
+    d.innerHTML = '<div class="media-wrap">' +
+      '<div class="resize-top"></div>' +
+      '<div class="resize-right"></div>' +
+      '<div class="resize-bottom"></div>' +
+      '<div class="resize-left"></div>' +
+      '<span class="tag">' + esc(tagText) + '</span></div>';
     return d;
   }
 
@@ -543,6 +545,12 @@
     for (var i = 0; i < rows.length; i++) rows[i].classList.remove("selected");
     var row = listEl.querySelector('[data-id="' + id + '"]');
     if (row) row.classList.add("selected");
+    var allEl = canvas.querySelectorAll(".el");
+    for (var i = 0; i < allEl.length; i++) allEl[i].classList.remove("selected");
+    if (id) {
+      var cel = canvas.querySelector('[data-id="' + id + '"]');
+      if (cel) cel.classList.add("selected");
+    }
   }
 
   /* === Edit === */
@@ -657,12 +665,13 @@
   }
 
   function syncEdit() {
-    if (!editingId || !state[editingId]) return;
-    var el = state[editingId];
-    document.getElementById("ed-x").value = (el.x || 0).toFixed(3);
-    document.getElementById("ed-y").value = (el.y || 0).toFixed(3);
-    document.getElementById("ed-w").value = (el.w || 0.3).toFixed(3);
-    document.getElementById("ed-h").value = (el.h || 0.08).toFixed(3);
+    if (!editingId) return;
+    var pos = POS_MAP[editingId];
+    if (!pos) return;
+    document.getElementById("ed-x").value = (pos.x || 0).toFixed(3);
+    document.getElementById("ed-y").value = (pos.y || 0).toFixed(3);
+    document.getElementById("ed-w").value = (pos.w || 0.3).toFixed(3);
+    document.getElementById("ed-h").value = (pos.h || 0.08).toFixed(3);
   }
 
   function bindInput(eid, key, isNum) {
