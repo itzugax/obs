@@ -69,6 +69,9 @@ function renderOverlay(el) {
   /* Visibilidad */
   node.classList.toggle("inactive", el.visible === false);
 
+  /* Opacidad */
+  node.style.opacity = el.opacity != null ? el.opacity / 100 : 1;
+
   /* Estilos de texto */
   if (el.type === "text") {
     node.textContent = el.content || "";
@@ -82,12 +85,15 @@ function renderOverlay(el) {
     node.style.backgroundColor = (el.bgColor || "#000000") + aHex;
   }
 
-  /* Sincronizar multimedia */
+  /* Sincronizar multimedia — pausa si oculto o en pausa */
   var media = node.querySelector("video, audio");
   if (media) {
     media.volume = el.volume != null ? el.volume : 1;
-    if (el.playing === false) { media.pause(); }
-    else { media.play().catch(function () {}); }
+    if (el.visible === false || el.playing === false) {
+      media.pause();
+    } else {
+      media.play().catch(function () {});
+    }
   }
 }
 

@@ -66,11 +66,16 @@ input[type="range"]{width:100%;accent-color:var(--accent);height:4px}
 .row .icon{font-size:12px;flex-shrink:0;width:18px;text-align:center}
 .row .name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);min-width:0}
 .row .vol{width:50px;flex-shrink:0}
+.edit-group{margin:8px 0;padding:8px;background:var(--bg);border-radius:6px;border:1px solid var(--border)}
+.edit-group label{font-size:10px}
 .ibtn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:2px 4px;border-radius:3px;transition:color .15s;flex-shrink:0;line-height:1}
 .ibtn:hover{color:var(--text)}
 .ibtn.on{color:var(--ok)}
 .ibtn.edit:hover{color:var(--accent)}
 .ibtn.danger:hover{color:var(--danger)}
+.vol-wrap{display:flex;align-items:center;gap:3px}
+.vol-icon{font-size:11px;flex-shrink:0}
+.row .layer-badge{font-size:9px;background:var(--accent);color:#000;padding:1px 4px;border-radius:3px;font-weight:700;flex-shrink:0;min-width:16px;text-align:center}
 .empty{text-align:center;color:var(--muted);font-size:12px;padding:20px 0}
 
 /* Canvas */

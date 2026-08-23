@@ -133,6 +133,22 @@
           <label><input type="checkbox" id="edit-text-italic"> Cursiva</label>
         </div>
       </div>
+      <!-- Posicion y Tamano -->
+      <div class="edit-group">
+        <div class="inline-row">
+          <div class="field"><label>X %</label><input type="number" id="edit-x" min="0" max="100" step="0.1"></div>
+          <div class="field"><label>Y %</label><input type="number" id="edit-y" min="0" max="100" step="0.1"></div>
+          <div class="field"><label>Ancho %</label><input type="number" id="edit-w" min="1" max="100" step="0.1"></div>
+          <div class="field"><label>Alto %</label><input type="number" id="edit-h" min="1" max="100" step="0.1"></div>
+        </div>
+      </div>
+      <!-- Opacidad -->
+      <div class="edit-group">
+        <div class="inline-row">
+          <div class="field" style="flex:3"><label>Opacidad general</label><input type="range" id="edit-opacity" min="0" max="100" value="100"></div>
+          <div class="field" style="flex:0 0 40px;text-align:center"><label>&nbsp;</label><span id="edit-opacity-val">100</span>%</div>
+        </div>
+      </div>
       <div class="inline-row">
         <button id="edit-save" class="btn primary">Guardar</button>
         <button id="edit-cancel" class="btn">Cancelar</button>

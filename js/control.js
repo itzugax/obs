@@ -280,12 +280,13 @@ function renderRow(el) {
 
     row.innerHTML =
       '<span class="icon">' + typeIcon(el.type) + '</span>' +
-      '<span class="name">' + (el.type === "text" ? (el.content || "").slice(0, 14) : nameFromUrl(el.url || "")) + '</span>' +
-      (el.type !== "text" ? '<input class="vol" type="range" min="0" max="100" value="' + volVal + '" title="Volumen">' : '') +
-      '<button class="ibtn edit" title="Editar">✎</button>' +
+      '<span class="layer-badge">' + (el.z || 0) + '</span>' +
+      '<span class="name">' + (el.type === "text" ? (el.content || "").slice(0, 12) : nameFromUrl(el.url || "")) + '</span>' +
+      (el.type !== "text" ? '<span class="vol-wrap"><span class="vol-icon">Vol</span><input class="vol" type="range" min="0" max="100" value="' + volVal + '"></span>' : '') +
+      '<button class="ibtn edit" title="Editar posicion, tamano, opacidad, etc">✎</button>' +
       '<button class="ibtn eye" title="Mostrar / Ocultar">◉</button>' +
       '<button class="ibtn play" title="Reproducir / Pausar">▶</button>' +
-      '<button class="ibtn front" title="Traer al frente">▲</button>' +
+      '<button class="ibtn front" title="Traer al frente (capa superior)">▲</button>' +
       '<button class="ibtn danger" title="Eliminar">✕</button>';
 
     row.querySelector(".vol") && row.querySelector(".vol").addEventListener("input", function () {
@@ -294,7 +295,15 @@ function renderRow(el) {
 
     row.querySelector(".eye").addEventListener("click", function () {
       var cur = state.get(el.id);
-      roomRef.child(el.id).update({ visible: cur && cur.visible === false });
+      var nextVisible = cur && cur.visible === false;
+      roomRef.child(el.id).update({ visible: nextVisible });
+      if (!nextVisible) {
+        var node = nodes.get(el.id);
+        if (node) {
+          var media = node.querySelector("video, audio");
+          if (media) media.pause();
+        }
+      }
     });
 
     row.querySelector(".play").addEventListener("click", function () {
@@ -326,7 +335,11 @@ function renderRow(el) {
   }
   var nameSpan = row.querySelector(".name");
   if (nameSpan) {
-    nameSpan.textContent = el.type === "text" ? (el.content || "").slice(0, 14) : nameFromUrl(el.url || "");
+    nameSpan.textContent = el.type === "text" ? (el.content || "").slice(0, 12) : nameFromUrl(el.url || "");
+  }
+  var layerBadge = row.querySelector(".layer-badge");
+  if (layerBadge) {
+    layerBadge.textContent = el.z || 0;
   }
 
   row.classList.toggle("off", el.visible === false);
@@ -503,7 +516,6 @@ function startEditing(id) {
   var el = state.get(id);
   if (!el) return;
   editingId = id;
-  addSection.style.display = "none";
   editSection.style.display = "";
 
   if (el.type === "text") {
@@ -522,12 +534,18 @@ function startEditing(id) {
     document.getElementById("edit-url-fields").style.display = "";
     document.getElementById("edit-url-input").value = el.url || "";
   }
+
+  document.getElementById("edit-x").value = Math.round(el.x * 1000) / 10;
+  document.getElementById("edit-y").value = Math.round(el.y * 1000) / 10;
+  document.getElementById("edit-w").value = Math.round(el.w * 1000) / 10;
+  document.getElementById("edit-h").value = Math.round(el.h * 1000) / 10;
+  document.getElementById("edit-opacity").value = el.opacity != null ? el.opacity : 100;
+  document.getElementById("edit-opacity-val").textContent = (el.opacity != null ? el.opacity : 100);
 }
 
 function stopEditing() {
   editingId = null;
   editSection.style.display = "none";
-  addSection.style.display = "";
 }
 
 document.getElementById("edit-save").addEventListener("click", function () {
@@ -535,24 +553,37 @@ document.getElementById("edit-save").addEventListener("click", function () {
   var el = state.get(editingId);
   if (!el) { stopEditing(); return; }
 
+  var updates = {};
+
   if (el.type === "text") {
-    roomRef.child(editingId).update({
-      content: document.getElementById("edit-text-input").value,
-      fontSize: parseInt(document.getElementById("edit-text-size").value) || 48,
-      fontColor: document.getElementById("edit-text-color").value,
-      fontFamily: document.getElementById("edit-text-font").value,
-      bgColor: document.getElementById("edit-text-bg").value,
-      bgOpacity: parseInt(document.getElementById("edit-text-bg-opacity").value) || 0,
-      bold: document.getElementById("edit-text-bold").checked,
-      italic: document.getElementById("edit-text-italic").checked
-    });
+    updates.content = document.getElementById("edit-text-input").value;
+    updates.fontSize = parseInt(document.getElementById("edit-text-size").value) || 48;
+    updates.fontColor = document.getElementById("edit-text-color").value;
+    updates.fontFamily = document.getElementById("edit-text-font").value;
+    updates.bgColor = document.getElementById("edit-text-bg").value;
+    updates.bgOpacity = parseInt(document.getElementById("edit-text-bg-opacity").value) || 0;
+    updates.bold = document.getElementById("edit-text-bold").checked;
+    updates.italic = document.getElementById("edit-text-italic").checked;
   } else {
     var newUrl = document.getElementById("edit-url-input").value.trim();
     if (newUrl) {
-      roomRef.child(editingId).update({ url: newUrl, type: detectType(newUrl) });
+      updates.url = newUrl;
+      updates.type = detectType(newUrl);
     }
   }
+
+  updates.x = r4(clamp(parseFloat(document.getElementById("edit-x").value) / 100, 0, 0.98));
+  updates.y = r4(clamp(parseFloat(document.getElementById("edit-y").value) / 100, 0, 0.98));
+  updates.w = r4(clamp(parseFloat(document.getElementById("edit-w").value) / 100, 0.02, 1));
+  updates.h = r4(clamp(parseFloat(document.getElementById("edit-h").value) / 100, 0.02, 1));
+  updates.opacity = clamp(parseInt(document.getElementById("edit-opacity").value) || 100, 0, 100);
+
+  roomRef.child(editingId).update(updates);
   stopEditing();
+});
+
+document.getElementById("edit-opacity").addEventListener("input", function () {
+  document.getElementById("edit-opacity-val").textContent = this.value;
 });
 
 document.getElementById("edit-cancel").addEventListener("click", stopEditing);
