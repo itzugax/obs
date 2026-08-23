@@ -1383,6 +1383,13 @@ main {
   margin-bottom: 16px;
 }
 
+.auth-buttons-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
 .btn-google-auth {
   width: 100%;
   background: #ffffff;
@@ -1395,7 +1402,7 @@ main {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 8px;
   cursor: pointer;
   transition: all 0.15s;
   box-shadow: 0 2px 5px rgba(0,0,0,0.2);
@@ -1404,6 +1411,40 @@ main {
 .btn-google-auth:hover {
   background: #f8f9fa;
   transform: translateY(-1px);
+}
+
+.btn-discord-auth {
+  width: 100%;
+  background: #5865F2;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 10px 14px;
+  border: none;
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-discord-auth:hover {
+  background: #4752C4;
+  transform: translateY(-1px);
+}
+
+.auth-required-msg {
+  font-size: 11px;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  text-align: center;
+  margin-top: 6px;
+  font-weight: 600;
 }
 
 .auth-profile-badge {

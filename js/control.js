@@ -48,8 +48,8 @@
     errEl.className = "lobby-error";
     if (lobbyCard && btnEnter) lobbyCard.appendChild(errEl);
 
-    // Initialize Google Auth & Modals
-    initGoogleAuth();
+    // Initialize Social Auth (Google / Discord) & Modals
+    initSocialAuth();
     initModals();
     renderRecentRooms(digits);
 
@@ -222,37 +222,77 @@
     }
   }
 
-  /* === Google Auth === */
-  function initGoogleAuth() {
+  /* === Social Auth (Google / YouTube & Discord) === */
+  function initSocialAuth() {
     var btnGoogle = document.getElementById("btn-google-login");
+    var btnDiscord = document.getElementById("btn-discord-login");
+    var authRow = document.getElementById("auth-buttons-row");
+    var authReqMsg = document.getElementById("auth-required-msg");
     var profileBadge = document.getElementById("auth-profile-badge");
     var pfpImg = document.getElementById("lobby-user-pfp");
     var userNameTxt = document.getElementById("lobby-user-name");
+    var userProviderTxt = document.getElementById("lobby-user-provider");
     var btnLogoutGoogle = document.getElementById("btn-logout-google");
     var inUser = document.getElementById("lobby-user");
+    var btnEnter = document.getElementById("btn-enter-room");
+    var inPin = document.getElementById("lobby-pin");
+    var digits = Array.from(document.querySelectorAll(".room-digit"));
 
+    function ensureFirebase() {
+      if (!firebase.apps || !firebase.apps.length) {
+        if (typeof firebaseConfig !== "undefined") firebase.initializeApp(firebaseConfig);
+      }
+    }
+
+    function handleAuthSuccess(user, providerName) {
+      if (!user) return;
+      _currentUser.uid = user.uid;
+      _currentUser.name = (user.displayName || user.email.split("@")[0] || "streamer").toLowerCase().replace(/[^a-z0-9_.-]/g, "");
+      _currentUser.photoURL = user.photoURL || ("https://api.dicebear.com/7.x/bottts/svg?seed=" + encodeURIComponent(_currentUser.name));
+      _currentUser.provider = providerName || "Social";
+
+      localStorage.setItem("ugax_user", _currentUser.name);
+      localStorage.setItem("ugax_user_photo", _currentUser.photoURL);
+      localStorage.setItem("ugax_user_provider", _currentUser.provider);
+
+      showProfile();
+    }
+
+    function setFormUnlocked(unlocked) {
+      digits.forEach(function(d) { d.disabled = !unlocked; });
+      if (inPin) inPin.disabled = !unlocked;
+      if (btnEnter) btnEnter.disabled = !unlocked;
+    }
+
+    function showProfile() {
+      if (_currentUser.photoURL && _currentUser.name) {
+        if (pfpImg) pfpImg.src = _currentUser.photoURL;
+        if (userNameTxt) userNameTxt.textContent = "@" + _currentUser.name;
+        if (userProviderTxt) userProviderTxt.textContent = "✓ " + (_currentUser.provider || "Verificado");
+        if (authRow) authRow.style.display = "none";
+        if (authReqMsg) authReqMsg.style.display = "none";
+        if (profileBadge) profileBadge.style.display = "flex";
+        if (inUser) inUser.value = _currentUser.name;
+        setFormUnlocked(true);
+      } else {
+        if (authRow) authRow.style.display = "grid";
+        if (authReqMsg) authReqMsg.style.display = "block";
+        if (profileBadge) profileBadge.style.display = "none";
+        setFormUnlocked(false);
+      }
+    }
+
+    // Google Login Handler
     if (btnGoogle) {
       btnGoogle.addEventListener("click", function() {
         try {
-          if (!firebase.apps || !firebase.apps.length) {
-            if (typeof firebaseConfig !== "undefined") firebase.initializeApp(firebaseConfig);
-          }
+          ensureFirebase();
           var provider = new firebase.auth.GoogleAuthProvider();
           firebase.auth().signInWithPopup(provider).then(function(res) {
-            var u = res.user;
-            if (u) {
-              _currentUser.uid = u.uid;
-              _currentUser.name = (u.displayName || u.email.split("@")[0] || "streamer").toLowerCase().replace(/[^a-z0-9_.-]/g, "");
-              _currentUser.photoURL = u.photoURL || ("https://api.dicebear.com/7.x/bottts/svg?seed=" + encodeURIComponent(_currentUser.name));
-
-              localStorage.setItem("ugax_user", _currentUser.name);
-              localStorage.setItem("ugax_user_photo", _currentUser.photoURL);
-
-              showGoogleProfile();
-            }
+            handleAuthSuccess(res.user, "Google");
           }).catch(function(err) {
-            console.warn("Google login popup warning:", err);
-            alert("No se pudo abrir el popup de Google. Puedes continuar ingresando tu Nickname normalmente!");
+            console.warn("Popup blocked, trying redirect...", err);
+            firebase.auth().signInWithRedirect(provider);
           });
         } catch (e) {
           console.error("Google Auth error:", e);
@@ -260,34 +300,54 @@
       });
     }
 
-    if (btnLogoutGoogle) {
-      btnLogoutGoogle.addEventListener("click", function() {
-        localStorage.removeItem("ugax_user_photo");
-        _currentUser.photoURL = "";
-        if (profileBadge) profileBadge.style.display = "none";
-        if (btnGoogle) btnGoogle.style.display = "flex";
+    // Discord Login Handler
+    if (btnDiscord) {
+      btnDiscord.addEventListener("click", function() {
+        try {
+          ensureFirebase();
+          var provider = new firebase.auth.OAuthProvider('oauth.discord');
+          firebase.auth().signInWithPopup(provider).then(function(res) {
+            handleAuthSuccess(res.user, "Discord");
+          }).catch(function(err) {
+            console.warn("Discord popup blocked, trying redirect...", err);
+            firebase.auth().signInWithRedirect(provider);
+          });
+        } catch (e) {
+          console.error("Discord Auth error:", e);
+        }
       });
     }
 
-    function showGoogleProfile() {
-      if (_currentUser.photoURL && pfpImg && userNameTxt) {
-        pfpImg.src = _currentUser.photoURL;
-        userNameTxt.textContent = "@" + _currentUser.name;
-        if (btnGoogle) btnGoogle.style.display = "none";
-        if (profileBadge) profileBadge.style.display = "flex";
-        if (inUser && !inUser.value) inUser.value = _currentUser.name;
-      } else {
-        if (btnGoogle) btnGoogle.style.display = "flex";
-        if (profileBadge) profileBadge.style.display = "none";
-      }
+    // Sign out button
+    if (btnLogoutGoogle) {
+      btnLogoutGoogle.addEventListener("click", function() {
+        localStorage.removeItem("ugax_user_photo");
+        localStorage.removeItem("ugax_user_provider");
+        _currentUser.photoURL = "";
+        _currentUser.name = "";
+        showProfile();
+      });
     }
 
-    // Only show profile badge if user actually logged in with Google (photoURL present)
-    if (localStorage.getItem("ugax_user_photo")) {
-      showGoogleProfile();
-    } else {
-      if (btnGoogle) btnGoogle.style.display = "flex";
-      if (profileBadge) profileBadge.style.display = "none";
+    // Check redirect result or existing auth
+    try {
+      ensureFirebase();
+      firebase.auth().getRedirectResult().then(function(res) {
+        if (res && res.user) {
+          handleAuthSuccess(res.user, "Verificado");
+        } else if (localStorage.getItem("ugax_user_photo")) {
+          _currentUser.name = localStorage.getItem("ugax_user") || "streamer";
+          _currentUser.photoURL = localStorage.getItem("ugax_user_photo") || "";
+          _currentUser.provider = localStorage.getItem("ugax_user_provider") || "Verificado";
+          showProfile();
+        } else {
+          showProfile();
+        }
+      }).catch(function() {
+        showProfile();
+      });
+    } catch(e) {
+      showProfile();
     }
   }
 
