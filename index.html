@@ -14,7 +14,7 @@
       <div class="lobby-logo">
         <h2>UGAX <span class="kick-green">STUDIO</span></h2>
       </div>
-      <p class="lobby-desc">Panel de moderación de overlays para OBS Studio.</p>
+      <p class="lobby-desc">Panel de control de overlays en vivo para tu stream.</p>
 
       <form id="lobby-form" onsubmit="return false;">
         <div class="lobby-group">
@@ -32,7 +32,7 @@
             <input class="room-digit" type="text" inputmode="numeric" maxlength="1" pattern="[0-9]" required>
             <input class="room-digit" type="text" inputmode="numeric" maxlength="1" pattern="[0-9]" required>
           </div>
-          <span class="lobby-hint">El mismo código que use quien controla el OBS</span>
+          <span class="lobby-hint">El mismo código que uses en tu programa de streaming</span>
         </div>
 
         <div class="lobby-group">
@@ -54,13 +54,13 @@
           <span class="kick-dot"></span>
           <h1>UGAX <span class="kick-green">STUDIO</span></h1>
         </div>
-        <span id="stream-label" class="room-pill" title="Sala actual">sala-stream-demo</span>
-        <button class="header-btn" id="btn-copy-obs" title="Copiar enlace para el Browser Source de OBS">&#128203; Copiar Link OBS</button>
-        <button class="header-btn user-btn" id="btn-user-login" title="Cambiar usuario o sala">&#128100; <span id="user-display">itzugax</span></button>
+        <span id="stream-label" class="room-pill" title="Sala actual">---</span>
+        <button class="header-btn" id="btn-copy-obs" title="Copiar enlace para el Browser Source de tu software de streaming">&#128203; Copiar Link</button>
+        <button class="header-btn user-btn" id="btn-user-login" title="Cambiar usuario o sala">&#128100; <span id="user-display">---</span></button>
       </div>
       <div id="conn">
         <button class="panic-btn" id="btn-panic" title="Ocultar todas las capas en caso de emergencia">&#128065;&#8205;&#128488; P&aacute;nico</button>
-        <span class="obs-badge" id="obs-badge" title="Estado de OBS Studio">&#128225; OBS: Buscando...</span>
+        <span class="obs-badge" id="obs-badge" title="Estado del software de streaming">&#128225; Stream: Buscando...</span>
         <span class="ping-badge" id="ping-badge" title="Latencia con el server">-- ms</span>
         <div class="dot" id="dot"></div>
       </div>

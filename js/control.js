@@ -119,46 +119,77 @@
       if (roomCode.length !== 6 || /[^0-9]/.test(roomCode)) { errEl.textContent = "El código de sala son 6 dígitos exactos"; digits[0].focus(); return; }
       if (!pin) { errEl.textContent = "Pon el PIN de la sala"; if (inPin) inPin.focus(); return; }
 
-      // Room ID is the 6-digit code
       var room = "sala-" + roomCode;
 
       btnEnter.textContent = "Verificando...";
       btnEnter.disabled = true;
       errEl.textContent = "";
 
-      // Check/set PIN via Firebase
-      var pinRef = firebase.database().ref("rooms/" + room + "/pin");
-      pinRef.once("value", function(snap) {
-        var storedPin = snap.val();
-        if (!storedPin) {
-          // Room is new — save PIN as master
-          pinRef.set(pin, function(err) {
-            if (err) {
-              errEl.textContent = "Error al guardar el PIN en Firebase";
-              btnEnter.textContent = "ENTRAR"; btnEnter.disabled = false;
-              return;
-            }
-            localStorage.setItem("ugax_user", username);
-            localStorage.setItem("ugax_last_room", roomCode);
-            launchApp(username, room);
-          });
-        } else if (storedPin === pin) {
-          localStorage.setItem("ugax_user", username);
-          localStorage.setItem("ugax_last_room", roomCode);
-          launchApp(username, room);
-        } else {
-          errEl.textContent = "❌ PIN incorrecto";
-          btnEnter.textContent = "ENTRAR"; btnEnter.disabled = false;
-          if (inPin) { inPin.value = ""; inPin.focus(); }
+      // Make sure Firebase is initialized
+      var fbApp;
+      try {
+        fbApp = firebase.app();
+      } catch(e) {
+        if (typeof firebaseConfig !== "undefined") {
+          fbApp = firebase.initializeApp(firebaseConfig);
         }
-      }, function() {
-        errEl.textContent = "⚠️ Sin conexión a Firebase, entrando localmente...";
-        setTimeout(function() {
-          localStorage.setItem("ugax_user", username);
-          localStorage.setItem("ugax_last_room", roomCode);
-          launchApp(username, "sala-" + roomCode);
-        }, 1200);
-      });
+      }
+
+      // If Firebase is ready, validate PIN via DB
+      if (fbApp || (typeof firebase !== "undefined" && firebase.apps && firebase.apps.length)) {
+        try {
+          var pinRef = firebase.database().ref("rooms/" + room + "/pin");
+          pinRef.once("value", function(snap) {
+            var storedPin = snap.val();
+            if (!storedPin) {
+              // New room — store PIN as master key
+              pinRef.set(pin, function(err) {
+                if (err) {
+                  errEl.textContent = "Error guardando el PIN";
+                  btnEnter.textContent = "ENTRAR"; btnEnter.disabled = false;
+                  return;
+                }
+                saveThenLaunch(username, roomCode, room);
+              });
+            } else if (storedPin === pin) {
+              saveThenLaunch(username, roomCode, room);
+            } else {
+              errEl.textContent = "❌ PIN incorrecto";
+              btnEnter.textContent = "ENTRAR"; btnEnter.disabled = false;
+              if (inPin) { inPin.value = ""; inPin.focus(); }
+            }
+          }, function(err) {
+            // Firebase read failed — fall back to local PIN check
+            localPinCheck(username, roomCode, room, pin);
+          });
+        } catch(ex) {
+          localPinCheck(username, roomCode, room, pin);
+        }
+      } else {
+        localPinCheck(username, roomCode, room, pin);
+      }
+    }
+
+    // Local PIN fallback (when Firebase is unavailable)
+    function localPinCheck(username, roomCode, room, pin) {
+      var savedPin = localStorage.getItem("ugax_pin_" + room);
+      if (!savedPin) {
+        // First time locally — accept and save
+        localStorage.setItem("ugax_pin_" + room, pin);
+        saveThenLaunch(username, roomCode, room);
+      } else if (savedPin === pin) {
+        saveThenLaunch(username, roomCode, room);
+      } else {
+        errEl.textContent = "❌ PIN incorrecto";
+        btnEnter.textContent = "ENTRAR"; btnEnter.disabled = false;
+        if (inPin) { inPin.value = ""; inPin.focus(); }
+      }
+    }
+
+    function saveThenLaunch(username, roomCode, room) {
+      localStorage.setItem("ugax_user", username);
+      localStorage.setItem("ugax_last_room", roomCode);
+      launchApp(username, room);
     }
 
     if (btnEnter) btnEnter.addEventListener("click", attemptEnter);
