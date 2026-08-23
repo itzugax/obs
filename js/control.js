@@ -1074,13 +1074,13 @@
     var ctx = cvs.getContext("2d");
     ctx.font = "bold " + fSize + "px " + fFam;
     var metrics = ctx.measureText(text);
-    var pxW = (metrics.width || (text.length * 30)) + 14;
-    var pxH = fSize * 1.15;
+    var pxW = (metrics.width || (text.length * 36)) + 24;
+    var pxH = fSize * 1.25;
     // Map to 1920x1080 stream coordinates
     var normW = pxW / 1920;
     var normH = pxH / 1080;
     return {
-      w: parseFloat(Math.max(0.04, Math.min(0.95, normW)).toFixed(4)),
+      w: parseFloat(Math.max(0.06, Math.min(0.95, normW)).toFixed(4)),
       h: parseFloat(Math.max(0.04, Math.min(0.95, normH)).toFixed(4))
     };
   }

@@ -161,6 +161,14 @@
     if (!w) return;
 
     if (el.type === "text") {
+      d.style.overflow = "visible";
+      w.style.overflow = "visible";
+      w.style.whiteSpace = "nowrap";
+      w.style.wordWrap = "normal";
+      w.style.padding = "0";
+      w.style.margin = "0";
+      w.style.boxSizing = "border-box";
+
       var bgVal = "transparent";
       if (el.bgType === "solid" && el.bgColor) {
         bgVal = "rgba(" + hexToRgb(el.bgColor) + "," + ((el.bgOpacity != null ? el.bgOpacity : 100) / 100) + ")";
@@ -169,7 +177,7 @@
       w.style.color = el.textColor || "#ffffff";
       w.style.fontWeight = "bold";
       w.style.fontStyle = "normal";
-      w.style.lineHeight = "1.2";
+      w.style.lineHeight = "1";
       w.style.textShadow = "3px 3px 8px rgba(0,0,0,0.9)";
       w.style.fontFamily = el.fontFamily || "'Comic Sans MS', 'Comic Sans', cursive";
       w.style.paintOrder = "stroke fill";
@@ -178,8 +186,8 @@
       var text = el.text || "";
       var len = Math.max(1, text.length);
 
-      var maxFsByH = boxH * 0.72;
-      var maxFsByW = (boxW * 0.94) / (len * 0.62);
+      var maxFsByH = boxH * 0.90;
+      var maxFsByW = (boxW * 0.98) / (len * 0.58);
       var baseFs = Math.max(10, Math.min(maxFsByH, maxFsByW));
       var userScale = (el.fontSize || 56) / 56;
       var dynFs = Math.max(10, Math.round(baseFs * userScale));
@@ -191,10 +199,6 @@
       w.style.alignItems = "center";
       w.style.justifyContent = "center";
       w.style.textAlign = "center";
-      w.style.wordWrap = "break-word";
-      w.style.overflow = "hidden";
-      w.style.padding = "4%";
-      w.style.boxSizing = "border-box";
       if (!w.querySelector("span")) w.innerHTML = "<span></span>";
       w.querySelector("span").textContent = el.text || "";
 

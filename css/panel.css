@@ -1170,6 +1170,10 @@ main {
   transition: border-color 0.12s;
 }
 
+.el.is-text .media-wrap {
+  overflow: visible;
+}
+
 .el:hover .media-wrap {
   border-color: rgba(59, 130, 246, 0.4);
 }
