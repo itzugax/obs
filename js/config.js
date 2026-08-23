@@ -20,5 +20,18 @@ const firebaseConfig = {
   appId:             "1:273738937122:web:639ec775a5c1ea62bd6b7b"
 };
 
-/* ID de la sala — debe ser IDÉNTICO en index.html y obs.html */
+/* ID de la sala — debe ser IDENTICO en index.html y obs.html */
 const STREAM_ID = "sala-stream-demo";
+
+/* ================================================================
+ *  Supabase — para subir archivos (Storage gratis sin tarjeta)
+ * ----------------------------------------------------------------
+ *  1) Crea cuenta gratis en https://supabase.com
+ *  2) Crea un proyecto nuevo
+ *  3) Ve a Storage → Create bucket → nombre: "media" → Public: ON
+ *  4) Ve a Settings → API → copia URL y anon key abajo
+ * ================================================================ */
+const supabaseConfig = {
+  url:      "https://TU_PROJECTO.supabase.co",
+  anonKey:  "TU_ANON_KEY_AQUI"
+};

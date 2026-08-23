@@ -1,13 +1,13 @@
 /* ================================================================
- *  control.js — Panel del Moderador (v2)
- *  Firebase RTDB + Storage + interact.js
+ *  control.js — Panel del Moderador (v3)
+ *  Firebase RTDB + Supabase Storage + interact.js
  *  Soporta: imagenes, videos, audios, textos, archivos del PC
  * ================================================================ */
 
 firebase.initializeApp(firebaseConfig);
 var db = firebase.database();
-var storage = firebase.storage();
 var roomRef = db.ref("overlays/" + STREAM_ID + "/elements");
+var sb = window.supabase.createClient(supabaseConfig.url, supabaseConfig.anonKey);
 
 /* ── DOM refs ── */
 var canvas = document.getElementById("canvas");
@@ -381,23 +381,22 @@ function handleFiles(files) {
   Array.from(files).forEach(function (file) {
     var item = document.createElement("div");
     item.className = "upload-item";
-    item.innerHTML = '<span>' + file.name.slice(0, 20) + '</span><span>Subiendo...</span>';
+    item.innerHTML = '<span>' + file.name.slice(0, 20) + '</span><span class="pending">Subiendo...</span>';
     uploadList.prepend(item);
 
-    var path = "streams/" + STREAM_ID + "/" + Date.now() + "_" + file.name;
-    var ref = storage.ref().child(path);
-    var upload = ref.put(file);
+    var path = STREAM_ID + "/" + Date.now() + "_" + file.name;
 
-    upload.on("state_changed", null, function (err) {
-      item.querySelector("span:last-child").className = "fail";
-      item.querySelector("span:last-child").textContent = "Error";
-    }, function () {
-      upload.snapshot.ref.getDownloadURL().then(function (url) {
-        var type = detectType(file.name);
-        pushElement(type, { url: url });
-        item.querySelector("span:last-child").className = "ok";
-        item.querySelector("span:last-child").textContent = "Listo";
-      });
+    sb.storage.from("media").upload(path, file, { upsert: true }).then(function (res) {
+      if (res.error) {
+        item.querySelector("span:last-child").className = "fail";
+        item.querySelector("span:last-child").textContent = "Error: " + res.error.message;
+        return;
+      }
+      var pub = sb.storage.from("media").getPublicUrl(path).data.publicUrl;
+      var type = detectType(file.name);
+      pushElement(type, { url: pub });
+      item.querySelector("span:last-child").className = "ok";
+      item.querySelector("span:last-child").textContent = "Listo";
     });
   });
 }
