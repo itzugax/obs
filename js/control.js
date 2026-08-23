@@ -129,17 +129,6 @@
       box.addEventListener("focus", function() { box.select(); });
     });
 
-    var _rickrollAudio = null;
-    function playRickroll() {
-      try {
-        if (_rickrollAudio) { _rickrollAudio.pause(); _rickrollAudio.currentTime = 0; }
-        _rickrollAudio = new Audio("https://www.myinstants.com/media/sounds/rickroll.mp3");
-        _rickrollAudio.volume = 0.6;
-        _rickrollAudio.play().catch(function(){});
-        setTimeout(function() { if (_rickrollAudio) { _rickrollAudio.pause(); _rickrollAudio = null; } }, 6000);
-      } catch(e) {}
-    }
-
     var pinModal = document.getElementById("modal-pin");
     var pinInput = document.getElementById("modal-pin-input");
     var pinErrorBox = document.getElementById("pin-error-box");
@@ -155,9 +144,13 @@
     var _pendingRoom = "";
 
     function showPinError(msg) {
-      if (pinErrorBox) { pinErrorBox.style.display = "flex"; pinErrorBox.style.animation = "none"; pinErrorBox.offsetHeight; pinErrorBox.style.animation = "shakeMeme 0.4s ease-in-out"; }
+      if (pinErrorBox) { 
+        pinErrorBox.style.display = "flex"; 
+        pinErrorBox.style.animation = "none"; 
+        pinErrorBox.offsetHeight; 
+        pinErrorBox.style.animation = "shakeShort 0.3s ease-in-out"; 
+      }
       if (pinErrorText) pinErrorText.textContent = msg;
-      playRickroll();
       if (btnVerifyPin) { btnVerifyPin.textContent = "VERIFICAR Y ENTRAR"; btnVerifyPin.disabled = false; }
     }
 
@@ -165,7 +158,6 @@
       if (pinModal) pinModal.style.display = "none";
       if (pinInput) pinInput.value = "";
       if (pinErrorBox) pinErrorBox.style.display = "none";
-      if (_rickrollAudio) { _rickrollAudio.pause(); _rickrollAudio = null; }
       btnEnter.textContent = "ENTRAR AL PANEL";
       btnEnter.disabled = false;
     }
@@ -212,7 +204,6 @@
             var regData = userSnap.val();
             if (regData && regData.uid && regData.uid !== _currentUser.uid) {
               errEl.textContent = "❌ El username @" + username + " ya está en uso. Elige otro.";
-              playRickroll();
               btnEnter.textContent = "ENTRAR AL PANEL";
               btnEnter.disabled = false;
               if (inUser) inUser.focus();
@@ -246,7 +237,7 @@
 
     function verifyPin() {
       var pin = (pinInput ? pinInput.value.trim() : "");
-      if (!pin) { showPinError("👉😹 Escribe el PIN primero jajaja"); return; }
+      if (!pin) { showPinError("Por favor escribe el PIN"); return; }
       if (btnVerifyPin) { btnVerifyPin.textContent = "Verificando..."; btnVerifyPin.disabled = true; }
 
       var fbDb = (typeof firebase !== "undefined" && firebase.database) ? firebase.database() : null;
@@ -257,7 +248,7 @@
             var storedPin = snap.val();
             if (!storedPin) {
               pinRef.set(pin, function(err) {
-                if (err) { showPinError("👉😹 Error guardando PIN, intenta de nuevo"); return; }
+                if (err) { showPinError("Error guardando el PIN. Intenta de nuevo."); return; }
                 closePinModal();
                 saveThenLaunch(_pendingUsername, _pendingRoomCode, _pendingRoom);
               });
@@ -265,7 +256,7 @@
               closePinModal();
               saveThenLaunch(_pendingUsername, _pendingRoomCode, _pendingRoom);
             } else {
-              showPinError("👉😹 PIN incorrecto jajaja, intenta de nuevo rey");
+              showPinError("PIN de acceso incorrecto. Intenta de nuevo.");
               if (pinInput) { pinInput.value = ""; pinInput.focus(); }
             }
           }, function() {
@@ -1071,7 +1062,7 @@
     });
   }
 
-  /* Helper to calculate exact tight text bounding box (fixes oversized selection box for short texts like 'sans' / 'wasa') */
+  /* Helper to calculate exact tight text bounding box (fixes oversized selection box and clips) */
   function calcTightTextBounds(txt, fontFamily, fontSize) {
     var text = txt || "Texto";
     var fSize = fontSize || 56;
@@ -1080,14 +1071,17 @@
     var ctx = cvs.getContext("2d");
     ctx.font = "bold " + fSize + "px " + fFam;
     var metrics = ctx.measureText(text);
-    var pxW = (metrics.width || (text.length * 36)) + 24;
-    var pxH = fSize * 1.25;
+    var pxW = Math.ceil(metrics.width) + 12;
+    var pxH = Math.ceil(fSize * 1.15) + 6;
+    if (metrics.actualBoundingBoxAscent && metrics.actualBoundingBoxDescent) {
+      pxH = Math.ceil(metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent) + 12;
+    }
     // Map to 1920x1080 stream coordinates
     var normW = pxW / 1920;
     var normH = pxH / 1080;
     return {
-      w: parseFloat(Math.max(0.06, Math.min(0.95, normW)).toFixed(4)),
-      h: parseFloat(Math.max(0.04, Math.min(0.95, normH)).toFixed(4))
+      w: parseFloat(Math.max(0.02, Math.min(0.98, normW)).toFixed(4)),
+      h: parseFloat(Math.max(0.02, Math.min(0.98, normH)).toFixed(4))
     };
   }
 
@@ -1301,6 +1295,14 @@
       });
     }
 
+    var btnFit = document.getElementById("qa-fit-bounds");
+    if (btnFit) {
+      btnFit.addEventListener("click", function() {
+        if (!editingId || !state[editingId]) return;
+        fitElementToContent(editingId);
+      });
+    }
+
     var btnFull = document.getElementById("qa-fullscreen");
     if (btnFull) {
       btnFull.addEventListener("click", function() {
@@ -1343,18 +1345,25 @@
     var el = state[id];
 
     if (el.type === "text") {
-      var len = Math.max(1, (el.text || "").length);
-      var newW = Math.max(0.15, Math.min(0.9, (len * 0.045) + 0.05));
-      var newH = 0.09;
-      POS_MAP[id] = { x: el.x || 0.1, y: el.y || 0.1, w: newW, h: newH };
+      var bounds = calcTightTextBounds(el.text, el.fontFamily, el.fontSize);
+      var newW = bounds.w;
+      var newH = bounds.h;
+      var curX = (POS_MAP[id] && POS_MAP[id].x != null) ? POS_MAP[id].x : (el.x || 0.1);
+      var curY = (POS_MAP[id] && POS_MAP[id].y != null) ? POS_MAP[id].y : (el.y || 0.1);
+      if (curX + newW > 1) curX = Math.max(0, 1 - newW);
+      if (curY + newH > 1) curY = Math.max(0, 1 - newH);
+
+      POS_MAP[id] = { x: curX, y: curY, w: newW, h: newH };
       var cel = canvas.querySelector('[data-id="' + id + '"]');
       if (cel) {
+        cel.style.left = (curX * 100) + "%";
+        cel.style.top = (curY * 100) + "%";
         cel.style.width = (newW * 100) + "%";
         cel.style.height = (newH * 100) + "%";
         updateTextSize(cel, el, newH, newW);
       }
       if (editingId === id) syncEdit();
-      roomRef.child(id).update({ w: newW, h: newH });
+      roomRef.child(id).update({ x: curX, y: curY, w: newW, h: newH });
 
     } else if (el.type === "image" && el.url) {
       var img = new Image();
@@ -1915,15 +1924,25 @@
     var text = elData.text || "";
     var len = Math.max(1, text.length);
 
-    var maxFsByH = boxH * 0.90;
-    var maxFsByW = (boxW * 0.98) / (len * 0.58);
-    var baseFs = Math.max(8, Math.min(maxFsByH, maxFsByW));
+    var fsByH = boxH * 0.85;
+    var fsByW = boxW / (len * 0.60);
+    var baseFs = Math.min(fsByH, fsByW);
     var userScale = (elData.fontSize || 56) / 56;
-    var dynFs = Math.max(8, Math.round(baseFs * userScale));
+    var dynFs = Math.max(8, baseFs * userScale);
 
-    wrap.style.fontSize = dynFs + "px";
-    var strokeW = Math.max(1, Math.round(dynFs * 0.07));
-    wrap.style.webkitTextStroke = strokeW + "px " + (elData.strokeColor || "#000000");
+    wrap.style.fontSize = Math.round(dynFs) + "px";
+
+    // Adaptive stroke & shadow to maintain legibility when small
+    var strokeW = Math.max(0.5, Math.min(dynFs * 0.05, 5));
+    wrap.style.webkitTextStroke = strokeW.toFixed(1) + "px " + (elData.strokeColor || "#000000");
+
+    if (dynFs < 20) {
+      wrap.style.textShadow = "1px 1px 2px rgba(0,0,0,0.8)";
+    } else if (dynFs < 45) {
+      wrap.style.textShadow = "2px 2px 4px rgba(0,0,0,0.85)";
+    } else {
+      wrap.style.textShadow = "3px 3px 6px rgba(0,0,0,0.9)";
+    }
   }
 
   function mkDiv(el) {

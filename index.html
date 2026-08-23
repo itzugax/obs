@@ -10,17 +10,10 @@
 
   <!-- Lobby / Gatekeeper Screen -->
   <div id="lobby-screen" class="lobby-container">
-    <div class="lobby-floating-bg" aria-hidden="true">
-      <div class="float-item float-1"><img src="https://api.dicebear.com/7.x/bottts/svg?seed=sans" alt=""></div>
-      <div class="float-item float-2"><span class="float-icon">💀</span></div>
-      <div class="float-item float-3"><img src="https://api.dicebear.com/7.x/bottts/svg?seed=itzugax" alt=""></div>
-      <div class="float-item float-4"><span class="float-icon">⚡</span></div>
-      <div class="float-item float-5"><span class="float-icon">🎮</span></div>
-      <div class="float-item float-6"><span class="float-icon">💀</span></div>
-    </div>
     <div class="lobby-card">
       <div class="lobby-card-top">
         <div class="lobby-logo">
+          <span class="kick-dot"></span>
           <h2>UGAX <span class="kick-green">STUDIO</span></h2>
         </div>
         <button class="icon-help-btn" id="btn-open-help" title="Ver guía de uso">&#10067; Ayuda</button>
@@ -164,7 +157,8 @@
 
             <!-- Quick Action Buttons -->
             <div class="quick-actions">
-              <button class="q-btn" id="qa-center" title="Centrar en pantalla">&#127919; Centrar fino</button>
+              <button class="q-btn" id="qa-fit-bounds" title="Ajustar caja exactamente al tamaño del texto/contenido">&#128207; Ajustar caja</button>
+              <button class="q-btn" id="qa-center" title="Centrar en pantalla">&#127919; Centrar</button>
               <button class="q-btn" id="qa-fullscreen" title="Ajustar a pantalla completa">&#128250; Modo cine</button>
               <button class="q-btn" id="qa-clone" title="Duplicar esta capa">&#128203; Clonar</button>
             </div>
@@ -338,8 +332,8 @@
         </div>
 
         <div id="pin-error-box" class="pin-error-box" style="display:none">
-          <span class="pin-error-meme">👉😹</span>
-          <span class="pin-error-text" id="pin-error-text">❌ PIN incorrecto jaja</span>
+          <span class="pin-error-icon">⚠️</span>
+          <span class="pin-error-text" id="pin-error-text">PIN de acceso incorrecto</span>
         </div>
 
         <div class="pin-modal-actions" style="display:flex;gap:8px;margin-top:16px;">

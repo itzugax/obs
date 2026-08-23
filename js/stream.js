@@ -134,7 +134,9 @@
 
   function makeLayer() {
     var d = document.createElement("div");
+    d.className = "ov";
     d.style.position = "absolute";
+    d.style.boxSizing = "border-box";
     d.style.overflow = "hidden";
     d.style.left = "0%";
     d.style.top = "0%";
@@ -143,6 +145,7 @@
     var inner = document.createElement("div");
     inner.style.width = "100%";
     inner.style.height = "100%";
+    inner.style.boxSizing = "border-box";
     inner.style.position = "relative";
     d.appendChild(inner);
     return d;
@@ -161,13 +164,15 @@
     if (!w) return;
 
     if (el.type === "text") {
-      d.style.overflow = "visible";
-      w.style.overflow = "visible";
+      d.style.overflow = "hidden";
+      w.style.overflow = "hidden";
       w.style.whiteSpace = "nowrap";
       w.style.wordWrap = "normal";
       w.style.padding = "0";
       w.style.margin = "0";
       w.style.boxSizing = "border-box";
+      w.style.width = "100%";
+      w.style.height = "100%";
 
       var bgVal = "transparent";
       if (el.bgType === "solid" && el.bgColor) {
@@ -178,23 +183,34 @@
       w.style.fontWeight = "bold";
       w.style.fontStyle = "normal";
       w.style.lineHeight = "1";
-      w.style.textShadow = "3px 3px 8px rgba(0,0,0,0.9)";
       w.style.fontFamily = el.fontFamily || "'Comic Sans MS', 'Comic Sans', cursive";
       w.style.paintOrder = "stroke fill";
+
       var boxW = (el.w || 0.3) * 1920;
       var boxH = (el.h || 0.08) * 1080;
       var text = el.text || "";
       var len = Math.max(1, text.length);
 
-      var maxFsByH = boxH * 0.90;
-      var maxFsByW = (boxW * 0.98) / (len * 0.58);
-      var baseFs = Math.max(10, Math.min(maxFsByH, maxFsByW));
+      var fsByH = boxH * 0.85;
+      var fsByW = boxW / (len * 0.60);
+      var baseFs = Math.min(fsByH, fsByW);
       var userScale = (el.fontSize || 56) / 56;
-      var dynFs = Math.max(10, Math.round(baseFs * userScale));
+      var dynFs = Math.max(8, baseFs * userScale);
 
-      w.style.fontSize = dynFs + "px";
-      var strokeW = Math.max(2, Math.round(dynFs * 0.07));
-      w.style.webkitTextStroke = strokeW + "px " + (el.strokeColor || "#000000");
+      w.style.fontSize = Math.round(dynFs) + "px";
+
+      // Adaptive stroke & shadow to maintain legibility when small
+      var strokeW = Math.max(0.5, Math.min(dynFs * 0.05, 5));
+      w.style.webkitTextStroke = strokeW.toFixed(1) + "px " + (el.strokeColor || "#000000");
+
+      if (dynFs < 20) {
+        w.style.textShadow = "1px 1px 2px rgba(0,0,0,0.8)";
+      } else if (dynFs < 45) {
+        w.style.textShadow = "2px 2px 4px rgba(0,0,0,0.85)";
+      } else {
+        w.style.textShadow = "3px 3px 6px rgba(0,0,0,0.9)";
+      }
+
       w.style.display = "flex";
       w.style.alignItems = "center";
       w.style.justifyContent = "center";
