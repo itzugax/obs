@@ -133,9 +133,21 @@
       var roomCode = digits.map(function(d) { return d.value; }).join("");
       var pin = (inPin ? inPin.value.trim() : "");
 
-      if (!username) { errEl.textContent = "Pon tu nickname papu"; if (inUser) inUser.focus(); return; }
-      if (roomCode.length !== 6 || /[^0-9]/.test(roomCode)) { errEl.textContent = "El código de sala son 6 dígitos exactos"; digits[0].focus(); return; }
-      if (!pin) { errEl.textContent = "Pon el PIN de la sala"; if (inPin) inPin.focus(); return; }
+      if (!username || username.length < 2) { 
+        errEl.textContent = "El username debe tener al menos 2 caracteres"; 
+        if (inUser) inUser.focus(); 
+        return; 
+      }
+      if (roomCode.length !== 6 || /[^0-9]/.test(roomCode)) { 
+        errEl.textContent = "El código de sala son 6 dígitos exactos"; 
+        digits[0].focus(); 
+        return; 
+      }
+      if (!pin) { 
+        errEl.textContent = "Pon el PIN de la sala"; 
+        if (inPin) inPin.focus(); 
+        return; 
+      }
 
       var room = "sala-" + roomCode;
 
@@ -149,27 +161,53 @@
         if (typeof firebaseConfig !== "undefined") fbApp = firebase.initializeApp(firebaseConfig);
       }
 
-      if (fbApp || (typeof firebase !== "undefined" && firebase.apps && firebase.apps.length)) {
+      var fbDb = (typeof firebase !== "undefined" && firebase.database) ? firebase.database() : null;
+
+      if (fbDb) {
         try {
-          var pinRef = firebase.database().ref("rooms/" + room + "/pin");
-          pinRef.once("value", function(snap) {
-            var storedPin = snap.val();
-            if (!storedPin) {
-              pinRef.set(pin, function(err) {
-                if (err) {
-                  errEl.textContent = "Error guardando el PIN";
-                  btnEnter.textContent = "ENTRAR AL PANEL"; btnEnter.disabled = false;
-                  return;
-                }
-                saveThenLaunch(username, roomCode, room);
-              });
-            } else if (storedPin === pin) {
-              saveThenLaunch(username, roomCode, room);
-            } else {
-              errEl.textContent = "❌ PIN incorrecto";
-              btnEnter.textContent = "ENTRAR AL PANEL"; btnEnter.disabled = false;
-              if (inPin) { inPin.value = ""; inPin.focus(); }
+          // 1. Check Unique Username across Firebase
+          var userRegRef = fbDb.ref("users_registry/" + username);
+          userRegRef.once("value", function(userSnap) {
+            var regData = userSnap.val();
+            if (regData && regData.uid && regData.uid !== _currentUser.uid) {
+              errEl.textContent = "❌ El username @" + username + " ya está en uso por otro usuario. Elige otro.";
+              btnEnter.textContent = "ENTRAR AL PANEL";
+              btnEnter.disabled = false;
+              if (inUser) inUser.focus();
+              return;
             }
+
+            // Claim / update username ownership for current user
+            userRegRef.set({
+              uid: _currentUser.uid,
+              name: username,
+              photoURL: _currentUser.photoURL,
+              ts: Date.now()
+            });
+
+            // 2. Check Room PIN
+            var pinRef = fbDb.ref("rooms/" + room + "/pin");
+            pinRef.once("value", function(snap) {
+              var storedPin = snap.val();
+              if (!storedPin) {
+                pinRef.set(pin, function(err) {
+                  if (err) {
+                    errEl.textContent = "Error guardando el PIN";
+                    btnEnter.textContent = "ENTRAR AL PANEL"; btnEnter.disabled = false;
+                    return;
+                  }
+                  saveThenLaunch(username, roomCode, room);
+                });
+              } else if (storedPin === pin) {
+                saveThenLaunch(username, roomCode, room);
+              } else {
+                errEl.textContent = "❌ PIN incorrecto";
+                btnEnter.textContent = "ENTRAR AL PANEL"; btnEnter.disabled = false;
+                if (inPin) { inPin.value = ""; inPin.focus(); }
+              }
+            }, function(err) {
+              localPinCheck(username, roomCode, room, pin);
+            });
           }, function(err) {
             localPinCheck(username, roomCode, room, pin);
           });
@@ -265,6 +303,7 @@
     }
 
     function showProfile() {
+      var groupUserEdit = document.getElementById("group-username-edit");
       if (_currentUser.photoURL && _currentUser.name) {
         if (pfpImg) pfpImg.src = _currentUser.photoURL;
         if (userNameTxt) userNameTxt.textContent = "@" + _currentUser.name;
@@ -272,14 +311,30 @@
         if (authRow) authRow.style.display = "none";
         if (authReqMsg) authReqMsg.style.display = "none";
         if (profileBadge) profileBadge.style.display = "flex";
-        if (inUser) inUser.value = _currentUser.name;
+        if (groupUserEdit) groupUserEdit.style.display = "block";
+        if (inUser) {
+          inUser.value = _currentUser.name;
+          inUser.disabled = false;
+        }
         setFormUnlocked(true);
       } else {
         if (authRow) authRow.style.display = "grid";
         if (authReqMsg) authReqMsg.style.display = "block";
         if (profileBadge) profileBadge.style.display = "none";
+        if (groupUserEdit) groupUserEdit.style.display = "none";
+        if (inUser) inUser.disabled = true;
         setFormUnlocked(false);
       }
+    }
+
+    if (inUser) {
+      inUser.addEventListener("input", function() {
+        var clean = inUser.value.trim().toLowerCase().replace(/[^a-z0-9_.-]/g, "");
+        if (clean) {
+          _currentUser.name = clean;
+          if (userNameTxt) userNameTxt.textContent = "@" + clean;
+        }
+      });
     }
 
     // REAL Google Login Handler
@@ -311,8 +366,7 @@
     if (btnDiscord) {
       btnDiscord.addEventListener("click", function() {
         var DISCORD_CLIENT_ID = "1527797262250410076";
-        // Redirect siempre a la URL pública de GitHub Pages (Discord no acepta file://)
-        var redirectUri = encodeURIComponent("https://itzugax.github.io/obs/");
+        var redirectUri = encodeURIComponent("https://obs.ugax.pro/");
         var scope = encodeURIComponent("identify");
         var discordUrl = "https://discord.com/oauth2/authorize" +
           "?client_id=" + DISCORD_CLIENT_ID +

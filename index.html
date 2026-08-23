@@ -53,7 +53,12 @@
       </div>
 
       <form id="lobby-form" onsubmit="return false;">
-        <input type="hidden" id="lobby-user" value="">
+        <!-- Editable Username once authenticated -->
+        <div class="lobby-group" id="group-username-edit" style="display:none">
+          <label>Username / Apodo</label>
+          <input type="text" id="lobby-user" placeholder="ej: itzugax" maxlength="24" required disabled autocomplete="off">
+          <span class="lobby-hint">Puedes personalizar tu apodo. Cada usuario debe tener un username único.</span>
+        </div>
 
         <div class="lobby-group">
           <label>Código de Sala (6 dígitos)</label>
