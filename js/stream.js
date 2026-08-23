@@ -30,7 +30,7 @@ function renderOverlay(el) {
     } else if (el.type === "video") {
       var vid = document.createElement("video");
       vid.src = el.url;
-      vid.loop = true;
+      vid.loop = el.loop !== false;
       vid.playsInline = true;
       vid.preload = "auto";
       vid.muted = false;

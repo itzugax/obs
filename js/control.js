@@ -147,7 +147,7 @@ function renderNode(el) {
     } else if (el.type === "video") {
       var vid = document.createElement("video");
       vid.src = el.url;
-      vid.loop = true;
+      vid.loop = el.loop !== false;
       vid.playsInline = true;
       vid.preload = "auto";
       vid.muted = false;
@@ -273,6 +273,8 @@ function bringToFront(id) {
  * ================================================================ */
 function renderRow(el) {
   var row = rows.get(el.id);
+  var isMedia = el.type === "video" || el.type === "audio";
+
   if (!row) {
     row = document.createElement("div");
     row.className = "row";
@@ -284,16 +286,32 @@ function renderRow(el) {
       '<span class="icon">' + typeIcon(el.type) + '</span>' +
       '<span class="layer-badge">' + (el.z || 0) + '</span>' +
       '<span class="name">' + (el.type === "text" ? (el.content || "").slice(0, 12) : nameFromUrl(el.url || "")) + '</span>' +
-      (el.type !== "text" ? '<span class="vol-wrap"><span class="vol-icon">Vol</span><input class="vol" type="range" min="0" max="100" value="' + volVal + '"></span>' : '') +
-      '<button class="ibtn edit" title="Editar posicion, tamano, opacidad, etc">✎</button>' +
+      (isMedia ? '<span class="vol-wrap"><span class="vol-icon">Vol</span><input class="vol" type="range" min="0" max="100" value="' + volVal + '"></span>' : '') +
+      '<button class="ibtn edit" title="Editar">✎</button>' +
       '<button class="ibtn eye" title="Mostrar / Ocultar">◉</button>' +
-      '<button class="ibtn play" title="Reproducir / Pausar">▶</button>' +
-      '<button class="ibtn front" title="Traer al frente (capa superior)">▲</button>' +
+      (isMedia ? '<button class="ibtn play" title="Pausar / Reanudar">⏸</button>' : '') +
+      (isMedia ? '<button class="ibtn loop" title="Bucle on/off">🔁</button>' : '') +
+      '<button class="ibtn front" title="Traer al frente">▲</button>' +
       '<button class="ibtn danger" title="Eliminar">✕</button>';
 
-    row.querySelector(".vol") && row.querySelector(".vol").addEventListener("input", function () {
-      roomRef.child(el.id).update({ volume: r4(parseInt(this.value) / 100) });
-    });
+    if (isMedia) {
+      var vol = row.querySelector(".vol");
+      if (vol) {
+        vol.addEventListener("input", function () {
+          roomRef.child(el.id).update({ volume: r4(parseInt(this.value) / 100) });
+        });
+      }
+
+      row.querySelector(".play").addEventListener("click", function () {
+        var cur = state.get(el.id);
+        roomRef.child(el.id).update({ playing: cur && cur.playing === false });
+      });
+
+      row.querySelector(".loop").addEventListener("click", function () {
+        var cur = state.get(el.id);
+        roomRef.child(el.id).update({ loop: cur && cur.loop === false ? true : false });
+      });
+    }
 
     row.querySelector(".eye").addEventListener("click", function () {
       var cur = state.get(el.id);
@@ -308,15 +326,8 @@ function renderRow(el) {
       }
     });
 
-    row.querySelector(".play").addEventListener("click", function () {
-      var cur = state.get(el.id);
-      roomRef.child(el.id).update({ playing: cur && cur.playing === false });
-    });
-
     row.querySelector(".front").addEventListener("click", function () { bringToFront(el.id); });
-
     row.querySelector(".edit").addEventListener("click", function () { startEditing(el.id); });
-
     row.querySelector(".danger").addEventListener("click", function () {
       roomRef.child(el.id).remove();
     });
@@ -325,7 +336,7 @@ function renderRow(el) {
     rows.set(el.id, row);
   }
 
-  /* Actualizar iconos segun estado actual */
+  /* Actualizar iconos segun estado */
   var eyeBtn = row.querySelector(".eye");
   if (eyeBtn) {
     eyeBtn.textContent = el.visible !== false ? "◉" : "○";
@@ -333,7 +344,13 @@ function renderRow(el) {
   }
   var playBtn = row.querySelector(".play");
   if (playBtn) {
-    playBtn.textContent = el.playing !== false ? "▶" : "⏸";
+    playBtn.textContent = el.playing !== false ? "⏸" : "▶";
+    playBtn.classList.toggle("on", el.playing !== false);
+  }
+  var loopBtn = row.querySelector(".loop");
+  if (loopBtn) {
+    loopBtn.textContent = el.loop !== false ? "🔁" : "➡";
+    loopBtn.classList.toggle("on", el.loop !== false);
   }
   var nameSpan = row.querySelector(".name");
   if (nameSpan) {
@@ -472,6 +489,7 @@ function pushElement(type, extra) {
     h: r4(sz.h),
     visible: true,
     playing: true,
+    loop: type === "video" ? true : false,
     volume: 0.8,
     z: ++zTop,
     createdAt: Date.now()
