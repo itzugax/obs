@@ -27,28 +27,13 @@
       <div class="sidebar-top">
         <!-- Tabs -->
         <div class="tabs">
-          <button class="tab active" data-tab="tab-snd">&#128266; Memes</button>
-          <button class="tab" data-tab="tab-url">&#128279; Linkaso</button>
+          <button class="tab active" data-tab="tab-url">&#128279; Linkaso</button>
           <button class="tab" data-tab="tab-arch">&#128193; Archivos</button>
           <button class="tab" data-tab="tab-txt">&#128196; Texto</button>
         </div>
 
-        <!-- Soundboard Tab (Botonera de Memes) -->
-        <div class="tab-body active" id="tab-snd">
-          <div class="sound-search-wrap">
-            <input type="text" id="snd-search" placeholder="&#128269; Buscar meme o sonido...">
-          </div>
-          <div class="sound-categories">
-            <button class="cat-pill active" data-cat="all">Todos</button>
-            <button class="cat-pill" data-cat="reaccion">Reacciones</button>
-            <button class="cat-pill" data-cat="meme">TikTok / Memes</button>
-            <button class="cat-pill" data-cat="fail">Fails / Risa</button>
-          </div>
-          <div class="soundboard-grid" id="soundboard-list"></div>
-        </div>
-
         <!-- URL Tab -->
-        <div class="tab-body" id="tab-url">
+        <div class="tab-body active" id="tab-url">
           <label>Pega el zelda / URL aquí</label>
           <input type="url" id="urlIn" placeholder="https://i.imgur.com/meme.jpg">
           <div class="hint">Aguanta <b>JPG, PNG, GIF, WEBP</b> (fotos) · <b>MP4, WEBM</b> (videos) · <b>MP3, WAV, OGG</b> (rolitas)</div>
@@ -156,16 +141,33 @@
     </aside>
 
     <main>
-      <div style="width:100%;text-align:center">
+      <div class="main-center">
         <div class="canvas-wrap">
           <div id="canvas"></div>
         </div>
         <div class="canvas-note">
           <span>Vista previa 16:9</span> · 
           <span>Siempre mantiene su proporción fina sin deformarse</span> · 
-          <span><b>Supr</b> para borrar</span> · 
-          <span><b>Flechas</b> para mover fino</span>
+          <span><b>Supr</b> borrar</span> · 
+          <span><b>Flechas</b> mover</span>
         </div>
+      </div>
+
+      <!-- Soundboard Dock (Memes y Reacciones abajo de la vista previa) -->
+      <div class="soundboard-dock">
+        <div class="dock-header">
+          <div class="dock-title">&#128266; Memes & Reacciones en Vivo (OBS)</div>
+          <div class="sound-categories">
+            <button class="cat-pill active" data-cat="all">Todos</button>
+            <button class="cat-pill" data-cat="reaccion">Reacciones</button>
+            <button class="cat-pill" data-cat="meme">TikTok / Memes</button>
+            <button class="cat-pill" data-cat="fail">Fails / Risa</button>
+          </div>
+          <div class="dock-search">
+            <input type="text" id="snd-search" placeholder="&#128269; Buscar meme...">
+          </div>
+        </div>
+        <div class="soundboard-deck" id="soundboard-list"></div>
       </div>
     </main>
   </div>
