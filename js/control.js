@@ -307,25 +307,18 @@
       });
     }
 
-    // REAL Discord Login Handler
+    // REAL Discord Login Handler — OAuth2 Implicit Flow (sin backend, sin pagar)
     if (btnDiscord) {
       btnDiscord.addEventListener("click", function() {
-        try {
-          ensureFirebase();
-          var provider = new firebase.auth.OAuthProvider('oauth.discord');
-          firebase.auth().signInWithPopup(provider).then(function(res) {
-            handleAuthSuccess(res.user, "Discord");
-          }).catch(function(err) {
-            console.warn("Discord popup error, trying redirect...", err);
-            if (err.code === "auth/popup-blocked" || err.code === "auth/popup-closed-by-user") {
-              firebase.auth().signInWithRedirect(provider);
-            } else {
-              alert("Error al iniciar sesión con Discord (" + err.code + "): " + err.message + "\n\nAsegúrate de habilitar el proveedor de Discord en Firebase Console.");
-            }
-          });
-        } catch (e) {
-          console.error("Discord Auth error:", e);
-        }
+        var DISCORD_CLIENT_ID = "TU_CLIENT_ID_AQUI"; // ← reemplaza con tu Client ID de Discord
+        var redirectUri = encodeURIComponent(window.location.origin + window.location.pathname);
+        var scope = encodeURIComponent("identify");
+        var discordUrl = "https://discord.com/oauth2/authorize" +
+          "?client_id=" + DISCORD_CLIENT_ID +
+          "&redirect_uri=" + redirectUri +
+          "&response_type=token" +
+          "&scope=" + scope;
+        window.location.href = discordUrl;
       });
     }
 
@@ -338,33 +331,72 @@
         } catch(e) {}
         localStorage.removeItem("ugax_user_photo");
         localStorage.removeItem("ugax_user_provider");
+        localStorage.removeItem("ugax_discord_token");
         _currentUser.photoURL = "";
         _currentUser.name = "";
         showProfile();
       });
     }
 
-    // Listen for Real Firebase Auth State changes
-    try {
-      ensureFirebase();
-      firebase.auth().onAuthStateChanged(function(user) {
-        if (user) {
-          var provName = "Google";
-          if (user.providerData && user.providerData[0] && user.providerData[0].providerId.includes("discord")) {
-            provName = "Discord";
-          }
-          handleAuthSuccess(user, provName);
-        } else if (localStorage.getItem("ugax_user_photo")) {
-          _currentUser.name = localStorage.getItem("ugax_user") || "streamer";
-          _currentUser.photoURL = localStorage.getItem("ugax_user_photo") || "";
-          _currentUser.provider = localStorage.getItem("ugax_user_provider") || "Verificado";
-          showProfile();
-        } else {
+    // Check Discord OAuth2 callback token in URL hash (#access_token=...)
+    function checkDiscordCallback() {
+      var hash = window.location.hash;
+      if (!hash || !hash.includes("access_token=")) return false;
+      var params = {};
+      hash.replace("#", "").split("&").forEach(function(pair) {
+        var kv = pair.split("=");
+        params[decodeURIComponent(kv[0])] = decodeURIComponent(kv[1] || "");
+      });
+      var token = params["access_token"];
+      if (!token) return false;
+
+      // Clean URL so token doesn't stay visible
+      window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+
+      // Fetch real Discord user info
+      fetch("https://discord.com/api/users/@me", {
+        headers: { "Authorization": "Bearer " + token }
+      }).then(function(res) { return res.json(); }).then(function(data) {
+        if (data && data.id) {
+          var avatarUrl = data.avatar
+            ? "https://cdn.discordapp.com/avatars/" + data.id + "/" + data.avatar + ".png?size=128"
+            : "https://api.dicebear.com/7.x/bottts/svg?seed=" + encodeURIComponent(data.username || "discord");
+          _currentUser.uid = "discord-" + data.id;
+          _currentUser.name = (data.global_name || data.username || "streamer").toLowerCase().replace(/[^a-z0-9_.-]/g, "");
+          _currentUser.photoURL = avatarUrl;
+          _currentUser.provider = "Discord";
+          localStorage.setItem("ugax_user", _currentUser.name);
+          localStorage.setItem("ugax_user_photo", _currentUser.photoURL);
+          localStorage.setItem("ugax_user_provider", "Discord");
+          localStorage.setItem("ugax_discord_token", token);
           showProfile();
         }
+      }).catch(function(e) {
+        console.warn("Discord API error:", e);
       });
-    } catch(e) {
-      showProfile();
+      return true;
+    }
+
+    // Listen for Real Firebase Auth State changes (Google) + Discord callback
+    var discordHandled = checkDiscordCallback();
+    if (!discordHandled) {
+      try {
+        ensureFirebase();
+        firebase.auth().onAuthStateChanged(function(user) {
+          if (user) {
+            handleAuthSuccess(user, "Google");
+          } else if (localStorage.getItem("ugax_user_photo")) {
+            _currentUser.name = localStorage.getItem("ugax_user") || "streamer";
+            _currentUser.photoURL = localStorage.getItem("ugax_user_photo") || "";
+            _currentUser.provider = localStorage.getItem("ugax_user_provider") || "Verificado";
+            showProfile();
+          } else {
+            showProfile();
+          }
+        });
+      } catch(e) {
+        showProfile();
+      }
     }
   }
 
