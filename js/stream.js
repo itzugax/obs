@@ -2,7 +2,7 @@
 (function() {
   var state = {};
   var _tid = null;
-  var box = document.getElementById("stream");
+  var box = document.getElementById("stage") || document.getElementById("stream");
   if (!box) return;
 
   /* Firebase */
