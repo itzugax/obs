@@ -124,7 +124,7 @@
           img = document.createElement("img");
           img.style.width = "100%";
           img.style.height = "100%";
-          img.style.objectFit = "fill";
+          img.style.objectFit = "contain";
           img.style.display = "block";
           w.appendChild(img);
         }
@@ -137,14 +137,14 @@
           vid.muted = false;
           vid.style.width = "100%";
           vid.style.height = "100%";
-          vid.style.objectFit = "fill";
+          vid.style.objectFit = "contain";
           vid.style.display = "block";
           w.appendChild(vid);
         }
         if (vid.src !== src) vid.src = src;
         vid.loop = !!el.loop;
         vid.volume = (el.volume || 100) / 100;
-        vid.style.objectFit = el.objectFit || "fill";
+        vid.style.objectFit = el.objectFit || "contain";
         try {
           if (el.visible === false) {
             if (!vid.paused) vid.pause();

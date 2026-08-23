@@ -129,9 +129,9 @@
         z: Date.now(), opacity: 100, visible: true,
         name: shortName(u), locked: false
       };
-      if (t === "image") base.objectFit = "fill";
+      if (t === "image") base.objectFit = "contain";
       if (t === "audio") { base.volume = 100; base.loop = false; }
-      if (t === "video") { base.volume = 100; base.loop = false; base.objectFit = "fill"; }
+      if (t === "video") { base.volume = 100; base.loop = false; base.objectFit = "contain"; }
       roomRef.child(id).set(base);
       document.getElementById("urlIn").value = "";
     });
@@ -211,9 +211,9 @@
               z: Date.now(), url: pub, name: shortName(f.name),
               opacity: 100, visible: true, locked: false
             };
-            if (t === "image") base.objectFit = "fill";
+            if (t === "image") base.objectFit = "contain";
             if (t === "audio") { base.volume = 100; base.loop = false; }
-            if (t === "video") { base.volume = 100; base.loop = false; base.objectFit = "fill"; }
+            if (t === "video") { base.volume = 100; base.loop = false; base.objectFit = "contain"; }
             roomRef.child(id).set(base);
             it.querySelector("span:last-child").className = "ok";
             it.querySelector("span:last-child").textContent = "Listo";
@@ -457,7 +457,7 @@
         if (vidEl) vidEl.style.display = "none";
         if (!imgEl) {
           imgEl = document.createElement("img");
-          imgEl.style.cssText = "width:100%;height:100%;object-fit:fill;display:block;pointer-events:none";
+          imgEl.style.cssText = "width:100%;height:100%;object-fit:contain;display:block;pointer-events:none";
           wrap.appendChild(imgEl);
         }
         imgEl.style.display = "";
@@ -468,14 +468,14 @@
         if (!vidEl) {
           vidEl = document.createElement("video");
           vidEl.muted = false;
-          vidEl.style.cssText = "width:100%;height:100%;object-fit:fill;display:block;pointer-events:none";
+          vidEl.style.cssText = "width:100%;height:100%;object-fit:contain;display:block;pointer-events:none";
           wrap.appendChild(vidEl);
         }
         vidEl.style.display = "";
         if (vidEl.src !== src) vidEl.src = src;
         vidEl.loop = !!el.loop;
         vidEl.volume = (el.volume || 100) / 100;
-        vidEl.style.objectFit = el.objectFit || "fill";
+        vidEl.style.objectFit = el.objectFit || "contain";
         try {
           if (el.visible === false) { if (!vidEl.paused) vidEl.pause(); }
           else if (vidEl.paused && vidEl.src) { vidEl.play().catch(function() {}); }
@@ -488,11 +488,11 @@
     var d = document.createElement("div");
     var tagText = el.type === "image" ? (el.name || "") : "";
     d.innerHTML =
-      '<div class="media-wrap">' +
       '<div class="resize-top"></div>' +
       '<div class="resize-right"></div>' +
       '<div class="resize-bottom"></div>' +
       '<div class="resize-left"></div>' +
+      '<div class="media-wrap">' +
       '<span class="tag">' + esc(tagText) + '</span>' +
       '<span class="txt-content" style="display:none"></span>' +
       '<div class="audio-badge" style="display:none">&#127925;</div>' +
