@@ -375,21 +375,13 @@
   }
 
   function fireSound(snd, cardEl) {
-    // 1. Play locally in moderator browser for immediate audio feedback
-    try {
-      var localA = new Audio(snd.url);
-      localA.play().catch(function(err) {
-        console.warn("Local sound play warning:", err);
-      });
-    } catch (e) {}
-
-    // 2. Animate button
+    // 1. Animate button feedback
     if (cardEl) {
       cardEl.classList.add("firing");
       setTimeout(function() { cardEl.classList.remove("firing"); }, 600);
     }
 
-    // 3. Broadcast to OBS Studio via Firebase /sfx in real-time
+    // 2. Broadcast to stream overlay (obs.html) via Firebase /sfx in real-time
     if (db) {
       db.ref("streams/" + streamId + "/sfx").set({
         url: snd.url,
