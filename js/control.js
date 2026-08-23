@@ -192,47 +192,18 @@
   }
 
   function fireSound(snd, cardEl) {
-    if (!roomRef) { alert("Sin conexi\u00F3n a Firebase papu"); return; }
+    if (!db) { alert("Sin conexi\u00F3n a Firebase papu"); return; }
 
     if (cardEl) {
       cardEl.classList.add("firing");
-      setTimeout(function() { cardEl.classList.remove("firing"); }, 1000);
+      setTimeout(function() { cardEl.classList.remove("firing"); }, 800);
     }
 
-    var foundId = null;
-    var keys = Object.keys(state);
-    for (var i = 0; i < keys.length; i++) {
-      if (state[keys[i]].type === "audio" && state[keys[i]].soundId === snd.id) {
-        foundId = keys[i];
-        break;
-      }
-    }
-
-    if (foundId) {
-      roomRef.child(foundId).update({
-        playTrigger: Date.now(),
-        visible: true
-      });
-      selectRow(foundId);
-      openEdit(foundId);
-    } else {
-      var newId = roomRef.push().key;
-      roomRef.child(newId).set({
-        type: "audio",
-        soundId: snd.id,
-        name: snd.icon + " " + snd.name,
-        url: snd.url,
-        x: 0.1, y: 0.1, w: 0.20, h: 0.08,
-        z: getNextZ(),
-        opacity: 100,
-        visible: true,
-        volume: 100,
-        loop: false,
-        playTrigger: Date.now()
-      });
-      selectRow(newId);
-      openEdit(newId);
-    }
+    db.ref("streams/" + streamId + "/sfx").set({
+      url: snd.url,
+      name: snd.name,
+      ts: Date.now()
+    });
   }
 
   function previewSound(snd) {

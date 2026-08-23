@@ -41,6 +41,25 @@
       presenceRef.set(Date.now());
     }, 5000);
 
+    // Instant Meme / Reaction Soundboard Player (No layers created)
+    var _lastSfxTs = Date.now();
+    db.ref("streams/" + streamId + "/sfx").on("value", function(snap) {
+      var data = snap.val();
+      if (!data || !data.url || !data.ts) return;
+      if (data.ts <= _lastSfxTs || (Date.now() - data.ts) > 10000) return;
+      _lastSfxTs = data.ts;
+
+      try {
+        var a = new Audio(data.url);
+        a.volume = 1.0;
+        a.play().catch(function(err) {
+          console.warn("OBS SFX play error:", err);
+        });
+      } catch (e) {
+        console.error("SFX error:", e);
+      }
+    });
+
   } catch (e) {
     console.error("Firebase error:", e);
     box.innerHTML = '<div style="color:red;padding:20px;text-align:center">Error de conexion OBS</div>';
