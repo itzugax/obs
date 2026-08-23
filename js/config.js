@@ -32,6 +32,6 @@ const STREAM_ID = "sala-stream-demo";
  *  4) Ve a Settings → API → copia URL y anon key abajo
  * ================================================================ */
 const supabaseConfig = {
-  url:      "https://TU_PROJECTO.supabase.co",
-  anonKey:  "TU_ANON_KEY_AQUI"
+  url:      "https://esccrtvcfssykpmltroz.supabase.co",
+  anonKey:  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVzY2NydHZjZnNzeWtwbWx0cm96Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg5NDgzMzAsImV4cCI6MjA5NDUyNDMzMH0.3XonC_eNeaSsVC6_EHEPcPvtskt1PV3Gp8VMs_oR5wM"
 };

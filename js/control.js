@@ -386,13 +386,13 @@ function handleFiles(files) {
 
     var path = STREAM_ID + "/" + Date.now() + "_" + file.name;
 
-    sb.storage.from("media").upload(path, file, { upsert: true }).then(function (res) {
+    sb.storage.from("wasa").upload(path, file, { upsert: true }).then(function (res) {
       if (res.error) {
         item.querySelector("span:last-child").className = "fail";
         item.querySelector("span:last-child").textContent = "Error: " + res.error.message;
         return;
       }
-      var pub = sb.storage.from("media").getPublicUrl(path).data.publicUrl;
+      var pub = sb.storage.from("wasa").getPublicUrl(path).data.publicUrl;
       var type = detectType(file.name);
       pushElement(type, { url: pub });
       item.querySelector("span:last-child").className = "ok";
