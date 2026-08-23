@@ -42,6 +42,8 @@
     var streamLbl = document.getElementById("stream-label");
     if (streamLbl) streamLbl.textContent = streamId;
 
+    initUserSession();
+    initSoundboard();
     initTabs();
     initAddUrl();
     initAddText();
@@ -52,6 +54,196 @@
     initCanvasEvents();
     initKeyboardEvents();
     initServices();
+  }
+
+  /* === User Profile & Room Session === */
+  function initUserSession() {
+    var storedUser = localStorage.getItem("ugax_user") || "itzugax";
+    var userDisplay = document.getElementById("user-display");
+    var btnUser = document.getElementById("btn-user-login");
+    var modal = document.getElementById("login-modal");
+    var btnClose = document.getElementById("btn-close-login");
+    var btnSave = document.getElementById("btn-save-login");
+    var userInput = document.getElementById("login-user-input");
+    var roomInput = document.getElementById("login-room-input");
+
+    if (userDisplay) userDisplay.textContent = "@" + storedUser;
+
+    if (btnUser && modal) {
+      btnUser.addEventListener("click", function() {
+        if (userInput) userInput.value = storedUser;
+        if (roomInput) roomInput.value = streamId;
+        modal.style.display = "flex";
+      });
+    }
+
+    if (btnClose && modal) {
+      btnClose.addEventListener("click", function() {
+        modal.style.display = "none";
+      });
+    }
+
+    if (modal) {
+      modal.addEventListener("click", function(e) {
+        if (e.target === modal) modal.style.display = "none";
+      });
+    }
+
+    if (btnSave) {
+      btnSave.addEventListener("click", function() {
+        var newUser = (userInput.value || "").trim().toLowerCase().replace(/[^a-z0-9_-]/g, "") || "invitado";
+        var newRoom = (roomInput.value || "").trim() || ("stream-" + newUser);
+        localStorage.setItem("ugax_user", newUser);
+        modal.style.display = "none";
+
+        var base = window.location.href.split("?")[0];
+        window.location.href = base + "?room=" + encodeURIComponent(newRoom);
+      });
+    }
+  }
+
+  /* === Soundboard Catalog & Engine === */
+  var MEME_SOUNDS = [
+    { id: "vine_boom", name: "Vine Boom", icon: "\uD83D\uDCA5", cat: "meme", url: "https://cdn.freesound.org/previews/563/563725_12398460-lq.mp3" },
+    { id: "bruh", name: "Bruh", icon: "\uD83C\uDFBA", cat: "meme", url: "https://cdn.freesound.org/previews/456/456565_5121236-lq.mp3" },
+    { id: "fbi", name: "FBI Open Up!", icon: "\uD83D\uDEA8", cat: "meme", url: "https://cdn.freesound.org/previews/413/413749_5121236-lq.mp3" },
+    { id: "grillos", name: "Cri-Cri Grillos", icon: "\uD83E\uDD97", cat: "reaccion", url: "https://cdn.freesound.org/previews/177/177495_321967-lq.mp3" },
+    { id: "sad_trombone", name: "Sad Trombone (Wah)", icon: "\uD83D\uDCC9", cat: "fail", url: "https://cdn.freesound.org/previews/175/175409_2394245-lq.mp3" },
+    { id: "emotional_damage", name: "Emotional Damage", icon: "\uD83D\uDC76", cat: "meme", url: "https://cdn.freesound.org/previews/612/612095_11861866-lq.mp3" },
+    { id: "badum_tss", name: "Ba Dum Tss!", icon: "\uD83E\uDD41", cat: "reaccion", url: "https://cdn.freesound.org/previews/425/425556_861714-lq.mp3" },
+    { id: "scream", name: "Grito / Scream", icon: "\uD83D\uDE31", cat: "reaccion", url: "https://cdn.freesound.org/previews/416/416838_5121236-lq.mp3" },
+    { id: "discord_ping", name: "Discord Ping", icon: "\uD83D\uDD14", cat: "meme", url: "https://cdn.freesound.org/previews/536/536108_11861866-lq.mp3" },
+    { id: "payaso", name: "Bocina Payaso", icon: "\uD83E\uDD21", cat: "fail", url: "https://cdn.freesound.org/previews/381/381382_4921277-lq.mp3" },
+    { id: "metal_pipe", name: "Metal Pipe Falling", icon: "\uD83E\uDD16", cat: "meme", url: "https://cdn.freesound.org/previews/659/659345_11861866-lq.mp3" },
+    { id: "taco_bell", name: "Taco Bell Bong", icon: "\uD83D\uDCA3", cat: "meme", url: "https://cdn.freesound.org/previews/339/339809_5121236-lq.mp3" },
+    { id: "coffin_dance", name: "Coffin Dance", icon: "\uD83D\uDD7A", cat: "meme", url: "https://cdn.freesound.org/previews/518/518884_11861866-lq.mp3" },
+    { id: "quack", name: "Cuac / Quack", icon: "\uD83E\uDD86", cat: "reaccion", url: "https://cdn.freesound.org/previews/412/412068_5121236-lq.mp3" },
+    { id: "run", name: "Run! Meme Drop", icon: "\uD83C\uDFC3", cat: "meme", url: "https://cdn.freesound.org/previews/467/467882_11861866-lq.mp3" },
+    { id: "aplausos", name: "Aplausos / Cheers", icon: "\uD83D\uDC4F", cat: "reaccion", url: "https://cdn.freesound.org/previews/448/448080_9159316-lq.mp3" }
+  ];
+
+  var _activeSoundCat = "all";
+  var _activeSoundSearch = "";
+
+  function initSoundboard() {
+    var listCont = document.getElementById("soundboard-list");
+    var searchIn = document.getElementById("snd-search");
+    var catBtns = document.querySelectorAll(".cat-pill");
+
+    if (!listCont) return;
+
+    if (searchIn) {
+      searchIn.addEventListener("input", function() {
+        _activeSoundSearch = searchIn.value.trim().toLowerCase();
+        renderSoundboard();
+      });
+    }
+
+    if (catBtns) {
+      catBtns.forEach(function(b) {
+        b.addEventListener("click", function() {
+          catBtns.forEach(function(x) { x.classList.remove("active"); });
+          b.classList.add("active");
+          _activeSoundCat = b.getAttribute("data-cat") || "all";
+          renderSoundboard();
+        });
+      });
+    }
+
+    renderSoundboard();
+  }
+
+  function renderSoundboard() {
+    var listCont = document.getElementById("soundboard-list");
+    if (!listCont) return;
+    listCont.innerHTML = "";
+
+    var filtered = MEME_SOUNDS.filter(function(s) {
+      var matchCat = (_activeSoundCat === "all") || (s.cat === _activeSoundCat);
+      var matchSearch = !_activeSoundSearch || s.name.toLowerCase().includes(_activeSoundSearch);
+      return matchCat && matchSearch;
+    });
+
+    filtered.forEach(function(snd) {
+      var card = document.createElement("div");
+      card.className = "snd-card";
+      card.title = "Clic pa disparar en OBS Studio";
+      card.innerHTML =
+        '<div class="snd-info">' +
+        '<span class="snd-icon">' + snd.icon + '</span>' +
+        '<span class="snd-name">' + esc2(snd.name) + '</span>' +
+        '</div>' +
+        '<div class="snd-actions">' +
+        '<button class="snd-mini-btn" title="Escuchar en tus aud\u00EDfonos">&#127911;</button>' +
+        '</div>';
+
+      card.addEventListener("click", function(e) {
+        if (e.target.closest(".snd-mini-btn")) return;
+        fireSound(snd, card);
+      });
+
+      card.querySelector(".snd-mini-btn").addEventListener("click", function(e) {
+        e.stopPropagation();
+        previewSound(snd);
+      });
+
+      listCont.appendChild(card);
+    });
+  }
+
+  function fireSound(snd, cardEl) {
+    if (!roomRef) { alert("Sin conexi\u00F3n a Firebase papu"); return; }
+
+    if (cardEl) {
+      cardEl.classList.add("firing");
+      setTimeout(function() { cardEl.classList.remove("firing"); }, 1000);
+    }
+
+    var foundId = null;
+    var keys = Object.keys(state);
+    for (var i = 0; i < keys.length; i++) {
+      if (state[keys[i]].type === "audio" && state[keys[i]].soundId === snd.id) {
+        foundId = keys[i];
+        break;
+      }
+    }
+
+    if (foundId) {
+      roomRef.child(foundId).update({
+        playTrigger: Date.now(),
+        visible: true
+      });
+      selectRow(foundId);
+      openEdit(foundId);
+    } else {
+      var newId = roomRef.push().key;
+      roomRef.child(newId).set({
+        type: "audio",
+        soundId: snd.id,
+        name: snd.icon + " " + snd.name,
+        url: snd.url,
+        x: 0.1, y: 0.1, w: 0.20, h: 0.08,
+        z: getNextZ(),
+        opacity: 100,
+        visible: true,
+        volume: 100,
+        loop: false,
+        playTrigger: Date.now()
+      });
+      selectRow(newId);
+      openEdit(newId);
+    }
+  }
+
+  function previewSound(snd) {
+    if (_localAudio) {
+      _localAudio.pause();
+      _localAudio = null;
+    }
+    _localAudio = new Audio(snd.url);
+    _localAudio.play().catch(function(e) {
+      console.warn("Local audio preview error:", e);
+    });
   }
 
   /* === Services (Firebase, Supabase, interact) === */

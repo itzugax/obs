@@ -12,6 +12,7 @@
       <h1>&#127918; Control de UGAX</h1>
       <span id="stream-label" title="Sala actual">sala-stream-demo</span>
       <button class="header-btn" id="btn-copy-obs" title="Copiar enlace para el Browser Source de OBS">&#128203; Copiar Link OBS</button>
+      <button class="header-btn user-btn" id="btn-user-login" title="Cambiar usuario o sala">&#128100; <span id="user-display">Iniciar Sesión</span></button>
     </div>
     <div id="conn">
       <span class="obs-badge" id="obs-badge" title="Estado de OBS Studio">&#128225; OBS: Buscando...</span>
@@ -26,13 +27,28 @@
       <div class="sidebar-top">
         <!-- Tabs -->
         <div class="tabs">
-          <button class="tab active" data-tab="tab-url">&#128279; Linkaso</button>
+          <button class="tab active" data-tab="tab-snd">&#128266; Memes</button>
+          <button class="tab" data-tab="tab-url">&#128279; Linkaso</button>
           <button class="tab" data-tab="tab-arch">&#128193; Archivos</button>
           <button class="tab" data-tab="tab-txt">&#128196; Texto</button>
         </div>
 
+        <!-- Soundboard Tab (Botonera de Memes) -->
+        <div class="tab-body active" id="tab-snd">
+          <div class="sound-search-wrap">
+            <input type="text" id="snd-search" placeholder="&#128269; Buscar meme o sonido...">
+          </div>
+          <div class="sound-categories">
+            <button class="cat-pill active" data-cat="all">Todos</button>
+            <button class="cat-pill" data-cat="reaccion">Reacciones</button>
+            <button class="cat-pill" data-cat="meme">TikTok / Memes</button>
+            <button class="cat-pill" data-cat="fail">Fails / Risa</button>
+          </div>
+          <div class="soundboard-grid" id="soundboard-list"></div>
+        </div>
+
         <!-- URL Tab -->
-        <div class="tab-body active" id="tab-url">
+        <div class="tab-body" id="tab-url">
           <label>Pega el zelda / URL aquí</label>
           <input type="url" id="urlIn" placeholder="https://i.imgur.com/meme.jpg">
           <div class="hint">Aguanta <b>JPG, PNG, GIF, WEBP</b> (fotos) · <b>MP4, WEBM</b> (videos) · <b>MP3, WAV, OGG</b> (rolitas)</div>
@@ -152,6 +168,27 @@
         </div>
       </div>
     </main>
+  </div>
+
+  <!-- User & Room Login Modal -->
+  <div class="modal-overlay" id="login-modal" style="display:none">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>&#128100; Perfil de Usuario & Sala</h3>
+        <button class="modal-close" id="btn-close-login">&times;</button>
+      </div>
+      <div class="modal-body">
+        <label>Nombre de usuario / Streamer</label>
+        <input type="text" id="login-user-input" placeholder="Tu apodo o canal (ej: itzugax)">
+        <div class="hint">Identifica quién está moderando en el panel</div>
+
+        <label style="margin-top:12px">Nombre de la Sala / Stream</label>
+        <input type="text" id="login-room-input" placeholder="Nombre de sala (ej: stream-demo)">
+        <div class="hint">Esta sala se conecta con tu Browser Source de OBS</div>
+
+        <button class="btn primary" id="btn-save-login" style="margin-top:16px;width:100%">&#128640; Entrar al Panel</button>
+      </div>
+    </div>
   </div>
 
   <!-- Scripts locales -->
