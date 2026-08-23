@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Control de UGAX</title>
   <link rel="stylesheet" href="css/panel.css">
-  <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
 </head>
 <body>
   <header>
@@ -31,7 +30,7 @@
         <div class="tab-body active" id="tab-url">
           <label>URL del recurso</label>
           <input type="url" id="urlIn" placeholder="https://i.imgur.com/foto.jpg">
-          <div class="hint">Soporta <b>JPG, PNG, GIF</b> (imagen) &middot; <b>MP4, WEBM</b> (video) &middot; <b>MP3</b> (audio)</div>
+          <div class="hint">Soporta <b>JPG, PNG, GIF</b> (imagen) · <b>MP4, WEBM</b> (video) · <b>MP3</b> (audio)</div>
           <button class="btn primary" id="addUrl">&#10010; Agregar al stream</button>
         </div>
 
@@ -151,14 +150,30 @@
         <div class="canvas-wrap">
           <div id="canvas"></div>
         </div>
-        <div class="canvas-note">Vista previa 16:9 &middot; Arrastra y redimensiona en el canvas</div>
+        <div class="canvas-note">Vista previa 16:9 · Arrastra y redimensiona en el canvas</div>
       </div>
     </main>
   </div>
 
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database-compat.js"></script>
-  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <!-- Error banner -->
+  <div id="load-error" style="display:none;position:fixed;bottom:0;left:0;right:0;background:#dc2626;color:#fff;padding:10px 16px;font-size:13px;z-index:9999;text-align:center"></div>
+
+  <!-- Scripts with error handling -->
+  <script>
+    var _loadErrors = [];
+    function _onScriptError(name) {
+      _loadErrors.push(name);
+      var el = document.getElementById("load-error");
+      if (el) {
+        el.style.display = "block";
+        el.innerHTML = "&#9888; No se pudo cargar: " + _loadErrors.join(", ") + " — Intenta recargar o usa otro navegador";
+      }
+    }
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/interactjs@1.10.18/dist/interact.min.js" onerror="_onScriptError('interact.js')"></script>
+  <script src="https://cdn.jsdelivr.net/npm/firebase@8.10.1/firebase-app.js" onerror="_onScriptError('Firebase App')"></script>
+  <script src="https://cdn.jsdelivr.net/npm/firebase@8.10.1/firebase-database.js" onerror="_onScriptError('Firebase Database')"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" onerror="_onScriptError('Supabase')"></script>
   <script src="js/control.js"></script>
 </body>
 </html>
