@@ -203,6 +203,16 @@
     }
   }
 
+  function getNextZ() {
+    var mx = 0;
+    var keys = Object.keys(state);
+    for (var i = 0; i < keys.length; i++) {
+      var z = state[keys[i]].z || 0;
+      if (z > mx) mx = z;
+    }
+    return mx + 10;
+  }
+
   /* === Add URL === */
   function initAddUrl() {
     var btn = document.getElementById("addUrl");
@@ -216,7 +226,7 @@
       var id = roomRef.push().key;
       var base = {
         type: t, url: u, x: 0.1, y: 0.1, w: 0.35, h: 0.25,
-        z: Date.now(), opacity: 100, visible: true,
+        z: getNextZ(), opacity: 100, visible: true,
         name: shortName(u), locked: false
       };
       if (t === "image") base.objectFit = "contain";
@@ -241,7 +251,7 @@
       roomRef.child(id).set({
         type: "text",
         x: 0.1, y: 0.1, w: 0.40, h: 0.10,
-        z: Date.now(), opacity: 100, visible: true,
+        z: getNextZ(), opacity: 100, visible: true,
         name: shortName(txt), locked: false,
         text: txt, fontSize: 56,
         textColor: "#ffffff", strokeColor: "#000000", strokeWidth: 5,
@@ -305,7 +315,7 @@
             var id = roomRef.push().key;
             var base = {
               type: t, x: 0.1, y: 0.1, w: 0.35, h: 0.25,
-              z: Date.now(), url: pub, name: shortName(f.name),
+              z: getNextZ(), url: pub, name: shortName(f.name),
               opacity: 100, visible: true, locked: false
             };
             if (t === "image") base.objectFit = "contain";
@@ -393,11 +403,61 @@
     var newId = roomRef.push().key;
     clone.x = Math.min(0.8, (clone.x || 0) + 0.04);
     clone.y = Math.min(0.8, (clone.y || 0) + 0.04);
-    clone.z = Date.now();
+    clone.z = getNextZ();
     clone.name = (clone.name || "Capa") + " (Copia)";
     roomRef.child(newId).set(clone);
     selectRow(newId);
     openEdit(newId);
+  }
+
+  function moveLayer(id, dir) {
+    if (!roomRef) return;
+    var keys = Object.keys(state);
+    keys.sort(function(a, b) { return (state[a].z || 0) - (state[b].z || 0); });
+    var idx = keys.indexOf(id);
+    if (idx === -1) return;
+    var targetIdx = idx + dir; // +1: move forward (higher z), -1: move backward (lower z)
+    if (targetIdx < 0 || targetIdx >= keys.length) return;
+
+    var temp = keys[idx];
+    keys[idx] = keys[targetIdx];
+    keys[targetIdx] = temp;
+
+    var updates = {};
+    for (var i = 0; i < keys.length; i++) {
+      updates[keys[i] + "/z"] = (i + 1) * 10;
+    }
+    roomRef.update(updates);
+  }
+
+  function bringToFront(id) {
+    if (!roomRef) return;
+    var keys = Object.keys(state);
+    keys.sort(function(a, b) { return (state[a].z || 0) - (state[b].z || 0); });
+    var idx = keys.indexOf(id);
+    if (idx === -1) return;
+    keys.splice(idx, 1);
+    keys.push(id);
+    var updates = {};
+    for (var i = 0; i < keys.length; i++) {
+      updates[keys[i] + "/z"] = (i + 1) * 10;
+    }
+    roomRef.update(updates);
+  }
+
+  function sendToBack(id) {
+    if (!roomRef) return;
+    var keys = Object.keys(state);
+    keys.sort(function(a, b) { return (state[a].z || 0) - (state[b].z || 0); });
+    var idx = keys.indexOf(id);
+    if (idx === -1) return;
+    keys.splice(idx, 1);
+    keys.unshift(id);
+    var updates = {};
+    for (var i = 0; i < keys.length; i++) {
+      updates[keys[i] + "/z"] = (i + 1) * 10;
+    }
+    roomRef.update(updates);
   }
 
   function initToolbar() {
@@ -426,40 +486,18 @@
 
     if (tbUp) tbUp.addEventListener("click", function() {
       if (!selectedId) { alert("Selecciona una capa primero mano"); return; }
-      bringToFront(selectedId);
+      moveLayer(selectedId, 1); // 1 paso adelante (sube en la lista)
     });
 
     if (tbDown) tbDown.addEventListener("click", function() {
       if (!selectedId) { alert("Selecciona una capa primero mano"); return; }
-      sendToBack(selectedId);
+      moveLayer(selectedId, -1); // 1 paso atrás (baja en la lista)
     });
 
     if (tbClone) tbClone.addEventListener("click", function() {
       if (!selectedId) { alert("Selecciona una capa primero mano"); return; }
       duplicateLayer(selectedId);
     });
-  }
-
-  function bringToFront(id) {
-    if (!roomRef) return;
-    var mx = 0;
-    var keys = Object.keys(state);
-    for (var i = 0; i < keys.length; i++) {
-      var z = state[keys[i]].z || 0;
-      if (z > mx) mx = z;
-    }
-    roomRef.child(id).update({ z: mx + 1 });
-  }
-
-  function sendToBack(id) {
-    if (!roomRef) return;
-    var mn = Infinity;
-    var keys = Object.keys(state);
-    for (var i = 0; i < keys.length; i++) {
-      var z = state[keys[i]].z || 0;
-      if (z < mn) mn = z;
-    }
-    roomRef.child(id).update({ z: mn - 1 });
   }
 
   /* === Canvas & Keyboard Events === */
@@ -690,14 +728,14 @@
             } else if (e.edges.bottom) { // S
               scaleFactor = Math.max(0.05, 1 + (dyPx / (initH * cr.height)));
               if (_startState.y + initH * scaleFactor > 1) scaleFactor = (1 - _startState.y) / initH;
-              if (_startState.x + initW * scaleFactor > 1) scaleFactor = Math.min(scaleFactor, (1 - _startState.x) / initW);
+              if (_startState.x + initW * scaleFactor > 1) scaleFactor = Math.min(scaleFactor, (1 - _startState.x) / initH);
               x = _startState.x;
               y = _startState.y;
 
             } else if (e.edges.top) { // N
               scaleFactor = Math.max(0.05, 1 - (dyPx / (initH * cr.height)));
               if (_startState.bottom - initH * scaleFactor < 0) scaleFactor = _startState.bottom / initH;
-              if (_startState.x + initW * scaleFactor > 1) scaleFactor = Math.min(scaleFactor, (1 - _startState.x) / initW);
+              if (_startState.x + initW * scaleFactor > 1) scaleFactor = Math.min(scaleFactor, (1 - _startState.x) / initH);
               x = _startState.x;
               y = _startState.bottom - initH * scaleFactor;
             }
@@ -736,7 +774,7 @@
       });
   }
 
-  /* === Render === */
+  /* === Render Canvas Elements (DOM order strictly matches z-index) === */
   function render() {
     var keys = Object.keys(state);
     keys.sort(function(a, b) { return (state[a].z || 0) - (state[b].z || 0); });
@@ -745,8 +783,12 @@
 
     var seen = {};
     for (var i = 0; i < keys.length; i++) {
-      seen[keys[i]] = 1;
-      upsertEl(keys[i], state[keys[i]]);
+      var id = keys[i];
+      seen[id] = 1;
+      upsertEl(id, state[id]);
+      // Re-append in canvas so DOM order strictly matches z-index ascending
+      var d = canvas.querySelector('[data-id="' + id + '"]');
+      if (d) canvas.appendChild(d);
     }
     var els = canvas.querySelectorAll(".el");
     for (var i = 0; i < els.length; i++) {
@@ -889,7 +931,7 @@
     return d;
   }
 
-  /* === Source List in Sidebar === */
+  /* === Source List in Sidebar (Top row is FRONT, Bottom row is BACK) === */
   function renderList(keys) {
     var existing = {};
     var rows = listEl.querySelectorAll(".row");
@@ -898,12 +940,14 @@
     }
 
     var fragment = document.createDocumentFragment();
-    for (var i = 0; i < keys.length; i++) {
-      var id = keys[i];
+    // Reverse keys so highest z (front-most layer) is at the TOP of the sidebar list
+    var listKeys = keys.slice().reverse();
+    for (var i = 0; i < listKeys.length; i++) {
+      var id = listKeys[i];
       var el = state[id];
       var r = existing[id];
       if (!r) r = mkRow(id, el);
-      upRow(r, id, el);
+      upRow(r, id, el, i, listKeys.length);
       fragment.appendChild(r);
     }
 
@@ -923,6 +967,8 @@
       '<span class="r-icon"></span>' +
       '<span class="r-name"></span>' +
       '<span class="r-badge"></span>' +
+      '<button class="ibtn layer-up" title="Traer 1 paso adelante">&#9650;</button>' +
+      '<button class="ibtn layer-down" title="Enviar 1 paso atr\u00E1s">&#9660;</button>' +
       '<button class="ibtn eye-btn" title="Mostrar/Ocultar">&#128065;</button>' +
       '<button class="ibtn lock-btn" title="Bloquear/Desbloquear">&#128275;</button>' +
       '<button class="ibtn edit-btn" title="Editar">&#9998;</button>' +
@@ -932,6 +978,16 @@
       if (e.target.closest(".ibtn")) return;
       selectRow(id);
       openEdit(id);
+    });
+
+    r.querySelector(".layer-up").addEventListener("click", function(e) {
+      e.stopPropagation();
+      moveLayer(id, 1);
+    });
+
+    r.querySelector(".layer-down").addEventListener("click", function(e) {
+      e.stopPropagation();
+      moveLayer(id, -1);
     });
 
     r.querySelector(".eye-btn").addEventListener("click", function(e) {
@@ -969,11 +1025,11 @@
     return r;
   }
 
-  function upRow(r, id, el) {
+  function upRow(r, id, el, rankIndex, totalCount) {
     var icons = { image: "IMG", video: "VID", audio: "AUD", text: "TXT" };
     r.querySelector(".r-icon").textContent = icons[el.type] || "???";
     r.querySelector(".r-name").textContent = el.name || id.slice(-6);
-    r.querySelector(".r-badge").textContent = "#" + (el.z || 0);
+    r.querySelector(".r-badge").textContent = "#" + (totalCount - rankIndex);
 
     var eye = r.querySelector(".eye-btn");
     if (el.visible !== false) {

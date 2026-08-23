@@ -60,9 +60,9 @@
       if (!d) {
         d = makeLayer();
         d.setAttribute("data-id", id);
-        box.appendChild(d);
       }
       updLayer(d, id, el);
+      box.appendChild(d); // Strictly re-append in z-index ascending order
     }
 
     var els = box.querySelectorAll("[data-id]");
