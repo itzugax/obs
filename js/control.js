@@ -176,19 +176,25 @@
     function attemptEnter() {
       var username = (inUser ? inUser.value.trim() : "").toLowerCase().replace(/[^a-z0-9_.-]/g, "") || _currentUser.name;
       var roomCode = digits.map(function(d) { return d.value; }).join("");
+      var urlParamRoom = new URLSearchParams(window.location.search).get("room") || "";
 
       if (!username || username.length < 2) {
         errEl.textContent = "El username debe tener al menos 2 caracteres";
         if (inUser) inUser.focus();
         return;
       }
-      if (roomCode.length !== 6 || /[^0-9]/.test(roomCode)) {
+
+      if ((!roomCode || roomCode.length !== 6 || /[^0-9]/.test(roomCode)) && urlParamRoom) {
+        roomCode = urlParamRoom;
+      }
+
+      if (!roomCode || (roomCode.length !== 6 && !urlParamRoom)) {
         errEl.textContent = "El código de sala son 6 dígitos exactos";
-        digits[0].focus();
+        if (digits[0]) digits[0].focus();
         return;
       }
 
-      var room = "sala-" + roomCode;
+      var room = roomCode.startsWith("sala-") ? roomCode : ("sala-" + roomCode);
       btnEnter.textContent = "Verificando...";
       btnEnter.disabled = true;
       errEl.textContent = "";
