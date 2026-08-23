@@ -75,7 +75,8 @@ function renderOverlay(el) {
   /* Estilos de texto */
   if (el.type === "text") {
     node.textContent = el.content || "";
-    node.style.fontSize = (el.fontSize || 48) / 10.8 + "vh";
+    var _fs = (el.fontSize || 48) * Math.sqrt((el.w * el.h) / (0.30 * 0.08));
+    node.style.fontSize = _fs + "px";
     node.style.color = el.fontColor || "#fff";
     node.style.fontFamily = el.fontFamily || "Arial, sans-serif";
     node.style.fontWeight = el.bold ? "bold" : "normal";

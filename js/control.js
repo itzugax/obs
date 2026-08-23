@@ -129,7 +129,8 @@ function renderNode(el) {
     if (el.type === "text") {
       node.classList.add("is-text");
       wrap.textContent = el.content || "";
-      wrap.style.fontSize = (el.fontSize || 48) / 10.8 + "vh";
+      var _fs = (el.fontSize || 48) * Math.sqrt((el.w * el.h) / (0.30 * 0.08));
+      wrap.style.fontSize = _fs + "px";
       wrap.style.color = el.fontColor || "#fff";
       wrap.style.fontFamily = el.fontFamily || "Arial, sans-serif";
       wrap.style.fontWeight = el.bold ? "bold" : "normal";
@@ -195,7 +196,8 @@ function renderNode(el) {
     var wrap2 = node.querySelector(".media-wrap");
     if (wrap2) {
       wrap2.textContent = el.content || "";
-      wrap2.style.fontSize = (el.fontSize || 48) / 10.8 + "vh";
+      var _fs2 = (el.fontSize || 48) * Math.sqrt((el.w * el.h) / (0.30 * 0.08));
+      wrap2.style.fontSize = _fs2 + "px";
       wrap2.style.color = el.fontColor || "#fff";
       wrap2.style.fontFamily = el.fontFamily || "Arial, sans-serif";
       wrap2.style.fontWeight = el.bold ? "bold" : "normal";
