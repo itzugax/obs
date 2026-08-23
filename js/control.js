@@ -290,6 +290,15 @@
   }
 
   /* === interact.js === */
+  var _wTimers = {};
+  function fbUpdate(id, data) {
+    if (!roomRef) return;
+    clearTimeout(_wTimers[id]);
+    _wTimers[id] = setTimeout(function() {
+      roomRef.child(id).update(data);
+    }, 30);
+  }
+
   function initInteract() {
     interact("#canvas .el").draggable({
       listeners: {
@@ -309,9 +318,11 @@
           POS_MAP[id].y = ny;
           e.target.style.left = (nx * 100) + "%";
           e.target.style.top = (ny * 100) + "%";
+          fbUpdate(id, { x: nx, y: ny });
         },
         end: function(e) {
           var id = e.target.getAttribute("data-id");
+          clearTimeout(_wTimers[id]);
           if (id && POS_MAP[id] && roomRef) {
             roomRef.child(id).update({ x: POS_MAP[id].x, y: POS_MAP[id].y });
           }
@@ -337,10 +348,12 @@
           e.target.style.height = (nh * 100) + "%";
           e.target.classList.add("resizing");
           if (editingId === id) syncEdit();
+          fbUpdate(id, { x: nx, y: ny, w: nw, h: nh });
         },
         end: function(e) {
           var id = e.target.getAttribute("data-id");
           e.target.classList.remove("resizing");
+          clearTimeout(_wTimers[id]);
           if (id && POS_MAP[id] && roomRef) {
             roomRef.child(id).update({
               x: POS_MAP[id].x, y: POS_MAP[id].y,
@@ -395,8 +408,17 @@
     d.style.opacity = (el.opacity != null ? el.opacity : 100) / 100;
 
     var wrap = d.querySelector(".media-wrap");
+    var txtEl = wrap.querySelector(".txt-content");
+    var audEl = wrap.querySelector(".audio-badge");
+    var imgEl = wrap.querySelector("img");
+    var vidEl = wrap.querySelector("video");
 
     if (el.type === "text") {
+      if (txtEl) txtEl.style.display = "";
+      if (audEl) audEl.style.display = "none";
+      if (imgEl) imgEl.style.display = "none";
+      if (vidEl) vidEl.style.display = "none";
+
       var bgVal = "transparent";
       if (el.bgType === "solid" && el.bgColor) {
         bgVal = "rgba(" + hexToRgb(el.bgColor) + "," + ((el.bgOpacity || 0) / 100) + ")";
@@ -405,32 +427,54 @@
       wrap.style.color = el.txtColor || "#fff";
       wrap.style.fontWeight = el.bold ? "bold" : "normal";
       wrap.style.fontStyle = el.italic ? "italic" : "normal";
+      wrap.style.lineHeight = "1.2";
+      wrap.style.textShadow = "2px 2px 6px rgba(0,0,0,0.8)";
       var baseFs = el.fontSize || 56;
       var hRatio = (el.h || 0.08) / 0.08;
-      var dynFs = Math.max(8, Math.round(baseFs * hRatio));
+      var dynFs = Math.max(8, Math.min(Math.round(baseFs * hRatio), 600));
       wrap.style.fontSize = dynFs + "px";
-      wrap.style.lineHeight = "1.2";
       wrap.style.webkitTextStroke = "5px #000000";
-      wrap.style.textShadow = "2px 2px 6px rgba(0,0,0,0.8)";
-      wrap.innerHTML = "<span>" + esc(el.text || "") + "</span>";
+      if (txtEl) txtEl.textContent = el.text || "";
+
     } else if (el.type === "audio") {
-      wrap.innerHTML = '<div class="audio-badge">&#127925;</div>';
+      if (txtEl) txtEl.style.display = "none";
+      if (audEl) audEl.style.display = "";
+      if (imgEl) imgEl.style.display = "none";
+      if (vidEl) vidEl.style.display = "none";
+      wrap.style.background = "linear-gradient(135deg, #1e293b, #0f172a)";
+
     } else {
+      if (txtEl) txtEl.style.display = "none";
+      if (audEl) audEl.style.display = "none";
+      wrap.style.background = "";
       var src = el.url || "";
+
       if (el.type === "image") {
-        var img = wrap.querySelector("img");
-        if (!img) { img = document.createElement("img"); wrap.appendChild(img); }
-        img.src = src;
+        if (vidEl) vidEl.style.display = "none";
+        if (!imgEl) {
+          imgEl = document.createElement("img");
+          imgEl.style.cssText = "width:100%;height:100%;object-fit:fill;display:block;pointer-events:none";
+          wrap.appendChild(imgEl);
+        }
+        imgEl.style.display = "";
+        if (imgEl.src !== src) imgEl.src = src;
+
       } else if (el.type === "video") {
-        var vid = wrap.querySelector("video");
-        if (!vid) { vid = document.createElement("video"); vid.muted = false; wrap.appendChild(vid); }
-        vid.src = src;
-        vid.loop = !!el.loop;
-        vid.volume = (el.volume || 100) / 100;
-        vid.objectFit = el.objectFit || "fill";
+        if (imgEl) imgEl.style.display = "none";
+        if (!vidEl) {
+          vidEl = document.createElement("video");
+          vidEl.muted = false;
+          vidEl.style.cssText = "width:100%;height:100%;object-fit:fill;display:block;pointer-events:none";
+          wrap.appendChild(vidEl);
+        }
+        vidEl.style.display = "";
+        if (vidEl.src !== src) vidEl.src = src;
+        vidEl.loop = !!el.loop;
+        vidEl.volume = (el.volume || 100) / 100;
+        vidEl.style.objectFit = el.objectFit || "fill";
         try {
-          if (el.visible === false) { if (!vid.paused) vid.pause(); }
-          else if (vid.paused && vid.src) { vid.play().catch(function() {}); }
+          if (el.visible === false) { if (!vidEl.paused) vidEl.pause(); }
+          else if (vidEl.paused && vidEl.src) { vidEl.play().catch(function() {}); }
         } catch (e) {}
       }
     }
@@ -439,12 +483,16 @@
   function mkDiv(el) {
     var d = document.createElement("div");
     var tagText = el.type === "image" ? (el.name || "") : "";
-    d.innerHTML = '<div class="media-wrap">' +
+    d.innerHTML =
+      '<div class="media-wrap">' +
       '<div class="resize-top"></div>' +
       '<div class="resize-right"></div>' +
       '<div class="resize-bottom"></div>' +
       '<div class="resize-left"></div>' +
-      '<span class="tag">' + esc(tagText) + '</span></div>';
+      '<span class="tag">' + esc(tagText) + '</span>' +
+      '<span class="txt-content" style="display:none"></span>' +
+      '<div class="audio-badge" style="display:none">&#127925;</div>' +
+      '</div>';
     return d;
   }
 

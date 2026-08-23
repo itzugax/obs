@@ -91,7 +91,7 @@
       w.style.fontStyle = el.italic ? "italic" : "normal";
       var baseFs = el.fontSize || 56;
       var hRatio = (el.h || 0.08) / 0.08;
-      var dynFs = Math.max(8, Math.round(baseFs * hRatio));
+      var dynFs = Math.max(8, Math.min(Math.round(baseFs * hRatio), 600));
       w.style.fontSize = dynFs + "px";
       w.style.lineHeight = "1.2";
       w.style.webkitTextStroke = "5px #000000";
@@ -102,7 +102,7 @@
       w.style.textAlign = "center";
       w.style.wordWrap = "break-word";
       w.style.overflow = "hidden";
-      w.style.padding = "2%";
+      w.style.padding = "4%";
       if (!w.querySelector("span")) w.innerHTML = "<span></span>";
       w.querySelector("span").textContent = el.text || "";
 
