@@ -8,9 +8,13 @@
   /* Firebase */
   try {
     firebase.initializeApp({
-      apiKey: "AIzaSyDummyPlaceholder123",
+      apiKey: "AIzaSyCWePF8D8Bo9Y0C4Wlt2fH1Ne6rjtefP28",
+      authDomain: "obss-1a2ae.firebaseapp.com",
       databaseURL: "https://obss-1a2ae-default-rtdb.firebaseio.com",
-      projectId: "obss-1a2ae"
+      projectId: "obss-1a2ae",
+      storageBucket: "obss-1a2ae.firebasestorage.app",
+      messagingSenderId: "273738937122",
+      appId: "1:273738937122:web:639ec775a5c1ea62bd6b7b"
     });
     var db = firebase.database();
     db.ref("streams/sala-stream-demo/elements").on("value", function(snap) {

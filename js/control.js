@@ -43,9 +43,13 @@
     if (typeof firebase !== "undefined") {
       try {
         firebase.initializeApp({
-          apiKey: "AIzaSyDummyPlaceholder123",
+          apiKey: "AIzaSyCWePF8D8Bo9Y0C4Wlt2fH1Ne6rjtefP28",
+          authDomain: "obss-1a2ae.firebaseapp.com",
           databaseURL: "https://obss-1a2ae-default-rtdb.firebaseio.com",
-          projectId: "obss-1a2ae"
+          projectId: "obss-1a2ae",
+          storageBucket: "obss-1a2ae.firebasestorage.app",
+          messagingSenderId: "273738937122",
+          appId: "1:273738937122:web:639ec775a5c1ea62bd6b7b"
         });
         db = firebase.database();
         roomRef = db.ref("streams/sala-stream-demo/elements");
@@ -74,7 +78,7 @@
       try {
         window._supabase = window.supabase.createClient(
           "https://esccrtvcfssykpmltroz.supabase.co",
-          "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVzY3J0dmNmZnN5a3BtbHRyb3oiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc1NDk5MTczNSwiZXhwIjoyMDcwNTY3NzM1fQ.8Ax1sNJ2D4pVFaTtT7x9ksW3Kn0h0y120kJvRfvxCY8"
+          "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVzY2NydHZjZnNzeWtwbWx0cm96Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg5NDgzMzAsImV4cCI6MjA5NDUyNDMzMH0.3XonC_eNeaSsVC6_EHEPcPvtskt1PV3Gp8VMs_oR5wM"
         );
       } catch (e) {
         console.warn("Supabase init error:", e);
