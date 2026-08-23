@@ -978,6 +978,14 @@
     });
   }
 
+  /* Helper to calculate tight text bounding box (fixes oversized selection box for short texts like 'sans') */
+  function calcTightTextBounds(txt) {
+    var len = Math.max(1, (txt || "").length);
+    var w = Math.max(0.06, Math.min(0.9, (len * 0.0165) + 0.038));
+    var h = 0.068;
+    return { w: parseFloat(w.toFixed(3)), h: parseFloat(h.toFixed(3)) };
+  }
+
   /* === Add Text === */
   function initAddText() {
     var btn = document.getElementById("addTxt");

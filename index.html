@@ -109,8 +109,9 @@
     </header>
 
   <div class="layout">
-    <aside>
-      <div class="sidebar-top">
+    <!-- Left Sidebar: Tools & Edit Properties -->
+    <aside class="sidebar-left">
+      <div class="sidebar-scrollable">
         <!-- Tabs -->
         <div class="tabs">
           <button class="tab active" data-tab="tab-url">&#128279; Linkaso</button>
@@ -202,31 +203,10 @@
           </div>
         </section>
       </div>
-
-      <!-- Source list -->
-      <div class="source-list" id="source-list">
-        <div class="source-list-header">
-          <h2>&#127912; Capas en vivo (<span id="count">0</span>)</h2>
-          <div class="source-quick-tools">
-            <button class="mini-tool-btn" id="btn-toggle-all" title="Modo pánico: ocultar/mostrar todo">&#128065; Pánico</button>
-            <button class="mini-tool-btn danger" id="btn-clear-all" title="Limpiar todas las fuentes">&#129529; Limpiar to</button>
-          </div>
-        </div>
-        <div id="list"></div>
-        <div class="empty" id="empty-msg">&#128196; No hay ni un meme puesto todavía. Sube algo arriba pe.</div>
-      </div>
-
-      <!-- Toolbar -->
-      <div class="toolbar">
-        <button id="tb-add" title="Agregar fuente">&#10010;</button>
-        <button id="tb-del" title="Borrar seleccionada" class="danger">&#128465;</button>
-        <button id="tb-up" title="Mover al frente">&#9650;</button>
-        <button id="tb-down" title="Mover al fondo">&#9660;</button>
-        <button id="tb-clone" title="Clonar seleccionada">&#128203;</button>
-      </div>
     </aside>
 
-    <main>
+    <!-- Center Stage: Stream Preview & Soundboard -->
+    <main class="main-center-stage">
       <div class="main-center">
         <div class="canvas-wrap">
           <div id="canvas"></div>
@@ -250,6 +230,30 @@
         <div class="soundboard-grid-deck" id="soundboard-list"></div>
       </div>
     </main>
+
+    <!-- Right Sidebar: Live Layers & Order -->
+    <aside class="sidebar-right">
+      <div class="source-list" id="source-list">
+        <div class="source-list-header">
+          <h2>&#127912; Capas en vivo (<span id="count">0</span>)</h2>
+          <div class="source-quick-tools">
+            <button class="mini-tool-btn" id="btn-toggle-all" title="Modo pánico: ocultar/mostrar todo">&#128065; Pánico</button>
+            <button class="mini-tool-btn danger" id="btn-clear-all" title="Limpiar todas las fuentes">&#129529; Limpiar to</button>
+          </div>
+        </div>
+        <div id="list"></div>
+        <div class="empty" id="empty-msg">&#128196; No hay ni un meme puesto todavía. Sube algo a la izquierda pe.</div>
+      </div>
+
+      <!-- Toolbar -->
+      <div class="toolbar">
+        <button id="tb-add" title="Agregar fuente">&#10010;</button>
+        <button id="tb-del" title="Borrar seleccionada" class="danger">&#128465;</button>
+        <button id="tb-up" title="Mover al frente">&#9650;</button>
+        <button id="tb-down" title="Mover al fondo">&#9660;</button>
+        <button id="tb-clone" title="Clonar seleccionada">&#128203;</button>
+      </div>
+    </aside>
   </div>
   </div> <!-- /app-wrapper -->
 
