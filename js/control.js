@@ -229,7 +229,20 @@
         z: getNextZ(), opacity: 100, visible: true,
         name: shortName(u), locked: false
       };
-      if (t === "image") base.objectFit = "contain";
+      if (t === "image") {
+        base.objectFit = "contain";
+        var img = new Image();
+        img.onload = function() {
+          var nw = img.naturalWidth || 16;
+          var nh = img.naturalHeight || 9;
+          var normAspect = (nw / nh) / (16 / 9);
+          var targetW = 0.38;
+          var targetH = targetW / normAspect;
+          if (targetH > 0.65) { targetH = 0.65; targetW = targetH * normAspect; }
+          roomRef.child(id).update({ w: targetW, h: targetH });
+        };
+        img.src = u;
+      }
       if (t === "audio") { base.volume = 100; base.loop = false; base.w = 0.20; base.h = 0.08; }
       if (t === "video") { base.volume = 100; base.loop = false; base.objectFit = "contain"; }
       roomRef.child(id).set(base);
@@ -248,9 +261,12 @@
       if (!txt) { alert("Escribe algo pe, no lo dejes vac\u00EDo xD"); return; }
       if (!roomRef) { alert("Sin conexi\u00F3n a Firebase papu. F5 para revivir."); return; }
       var id = roomRef.push().key;
+      var len = Math.max(1, txt.length);
+      var naturalW = Math.max(0.16, Math.min(0.85, (len * 0.045) + 0.05));
+      var naturalH = 0.09;
       roomRef.child(id).set({
         type: "text",
-        x: 0.1, y: 0.1, w: 0.40, h: 0.10,
+        x: 0.1, y: 0.1, w: naturalW, h: naturalH,
         z: getNextZ(), opacity: 100, visible: true,
         name: shortName(txt), locked: false,
         text: txt, fontSize: 56,
@@ -318,7 +334,20 @@
               z: getNextZ(), url: pub, name: shortName(f.name),
               opacity: 100, visible: true, locked: false
             };
-            if (t === "image") base.objectFit = "contain";
+            if (t === "image") {
+              base.objectFit = "contain";
+              var img = new Image();
+              img.onload = function() {
+                var nw = img.naturalWidth || 16;
+                var nh = img.naturalHeight || 9;
+                var normAspect = (nw / nh) / (16 / 9);
+                var targetW = 0.38;
+                var targetH = targetW / normAspect;
+                if (targetH > 0.65) { targetH = 0.65; targetW = targetH * normAspect; }
+                roomRef.child(id).update({ w: targetW, h: targetH });
+              };
+              img.src = pub;
+            }
             if (t === "audio") { base.volume = 100; base.loop = false; base.w = 0.20; base.h = 0.08; }
             if (t === "video") { base.volume = 100; base.loop = false; base.objectFit = "contain"; }
             roomRef.child(id).set(base);
@@ -338,6 +367,14 @@
 
   /* === Quick Actions & Toolbar === */
   function initQuickActions() {
+    var btnFit = document.getElementById("qa-fit");
+    if (btnFit) {
+      btnFit.addEventListener("click", function() {
+        if (!editingId || !state[editingId]) return;
+        fitElementToContent(editingId);
+      });
+    }
+
     var btnCenter = document.getElementById("qa-center");
     if (btnCenter) {
       btnCenter.addEventListener("click", function() {
@@ -370,7 +407,7 @@
           cel.style.top = "0%";
           cel.style.width = "100%";
           cel.style.height = "100%";
-          if (state[editingId].type === "text") updateTextSize(cel, state[editingId], 1);
+          if (state[editingId].type === "text") updateTextSize(cel, state[editingId], 1, 1);
         }
         syncEdit();
         roomRef.child(editingId).update({ x: 0, y: 0, w: 1, h: 1 });
@@ -393,6 +430,70 @@
         roomRef.child(editingId).update({ locked: !isLocked });
         btnLockToggle.innerHTML = isLocked ? "&#128274; Bloquear" : "&#128275; Desbloquear";
       });
+    }
+  }
+
+  function fitElementToContent(id) {
+    if (!state[id] || !roomRef) return;
+    var el = state[id];
+
+    if (el.type === "text") {
+      var len = Math.max(1, (el.text || "").length);
+      var newW = Math.max(0.15, Math.min(0.9, (len * 0.045) + 0.05));
+      var newH = 0.09;
+      POS_MAP[id] = { x: el.x || 0.1, y: el.y || 0.1, w: newW, h: newH };
+      var cel = canvas.querySelector('[data-id="' + id + '"]');
+      if (cel) {
+        cel.style.width = (newW * 100) + "%";
+        cel.style.height = (newH * 100) + "%";
+        updateTextSize(cel, el, newH, newW);
+      }
+      if (editingId === id) syncEdit();
+      roomRef.child(id).update({ w: newW, h: newH });
+
+    } else if (el.type === "image" && el.url) {
+      var img = new Image();
+      img.onload = function() {
+        var nw = img.naturalWidth || 16;
+        var nh = img.naturalHeight || 9;
+        var normAspect = (nw / nh) / (16 / 9);
+        var targetW = 0.38;
+        var targetH = targetW / normAspect;
+        if (targetH > 0.65) { targetH = 0.65; targetW = targetH * normAspect; }
+        targetW = Math.min(0.95, Math.max(0.05, targetW));
+        targetH = Math.min(0.95, Math.max(0.05, targetH));
+        POS_MAP[id] = { x: el.x || 0.1, y: el.y || 0.1, w: targetW, h: targetH };
+        var cel = canvas.querySelector('[data-id="' + id + '"]');
+        if (cel) {
+          cel.style.width = (targetW * 100) + "%";
+          cel.style.height = (targetH * 100) + "%";
+        }
+        if (editingId === id) syncEdit();
+        roomRef.child(id).update({ w: targetW, h: targetH });
+      };
+      img.src = el.url;
+
+    } else if (el.type === "video" && el.url) {
+      var v = document.createElement("video");
+      v.onloadedmetadata = function() {
+        var nw = v.videoWidth || 16;
+        var nh = v.videoHeight || 9;
+        var normAspect = (nw / nh) / (16 / 9);
+        var targetW = 0.38;
+        var targetH = targetW / normAspect;
+        if (targetH > 0.65) { targetH = 0.65; targetW = targetH * normAspect; }
+        targetW = Math.min(0.95, Math.max(0.05, targetW));
+        targetH = Math.min(0.95, Math.max(0.05, targetH));
+        POS_MAP[id] = { x: el.x || 0.1, y: el.y || 0.1, w: targetW, h: targetH };
+        var cel = canvas.querySelector('[data-id="' + id + '"]');
+        if (cel) {
+          cel.style.width = (targetW * 100) + "%";
+          cel.style.height = (targetH * 100) + "%";
+        }
+        if (editingId === id) syncEdit();
+        roomRef.child(id).update({ w: targetW, h: targetH });
+      };
+      v.src = el.url;
     }
   }
 
@@ -749,9 +850,9 @@
             e.target.style.width = (w * 100) + "%";
             e.target.style.height = (h * 100) + "%";
 
-            // If text element, auto-scale font size with box height immediately
+            // If text element, auto-scale font size with box height & width immediately
             if (state[id] && state[id].type === "text") {
-              updateTextSize(e.target, state[id], h);
+              updateTextSize(e.target, state[id], h, w);
             }
 
             if (editingId === id) syncEdit();
@@ -850,7 +951,7 @@
       wrap.style.textShadow = "2px 2px 6px rgba(0,0,0,0.9)";
       wrap.style.fontFamily = el.fontFamily || "'Comic Sans MS', 'Comic Sans', cursive";
       wrap.style.paintOrder = "stroke fill";
-      updateTextSize(d, el, el.h || 0.08);
+      updateTextSize(d, el, el.h || 0.08, el.w || 0.3);
       if (txtEl) txtEl.textContent = el.text || "";
 
     } else if (el.type === "audio") {
@@ -899,15 +1000,24 @@
     }
   }
 
-  function updateTextSize(elDom, elData, hVal) {
+  function updateTextSize(elDom, elData, hVal, wVal) {
     var wrap = elDom.querySelector(".media-wrap");
     if (!wrap) return;
+    var cw = canvas.clientWidth || 640;
     var ch = canvas.clientHeight || 360;
-    var boxHeightPx = (hVal || 0.08) * ch;
+    var boxW = (wVal != null ? wVal : (elData.w || 0.3)) * cw;
+    var boxH = (hVal != null ? hVal : (elData.h || 0.08)) * ch;
+    var text = elData.text || "";
+    var len = Math.max(1, text.length);
+
+    var maxFsByH = boxH * 0.72;
+    var maxFsByW = (boxW * 0.94) / (len * 0.62);
+    var baseFs = Math.max(8, Math.min(maxFsByH, maxFsByW));
     var userScale = (elData.fontSize || 56) / 56;
-    var dynFs = Math.max(10, Math.round(boxHeightPx * 0.60 * userScale));
+    var dynFs = Math.max(8, Math.round(baseFs * userScale));
+
     wrap.style.fontSize = dynFs + "px";
-    var strokeW = Math.max(1, Math.round(dynFs * 0.08));
+    var strokeW = Math.max(1, Math.round(dynFs * 0.07));
     wrap.style.webkitTextStroke = strokeW + "px " + (elData.strokeColor || "#000000");
   }
 
