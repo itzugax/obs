@@ -3,7 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Control de UGAX — Panel de Overlays</title>
+  <title>UGAX STUDIO — Panel de Overlays en Vivo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Bungee&family=Inter:wght@400;500;600;700;800&family=Montserrat:wght@600;800;900&family=Orbitron:wght@600;800;900&family=Permanent+Marker&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/panel.css">
 </head>
 <body class="kick-theme">
@@ -147,15 +150,33 @@
 
         <!-- Edit Section -->
         <section class="card" id="edit-section" style="display:none">
-          <h2>&#9998; Modificando: <span id="ed-title-type">Capa</span></h2>
-          <div style="padding:8px 12px">
+          <div class="edit-section-header">
+            <h2>&#9998; Inspector: <span id="ed-title-type">Capa</span></h2>
+            <span class="badge-active-layer" id="ed-layer-badge">ACTIVA</span>
+          </div>
+          <div class="edit-section-body">
             
             <div class="edit-group">
-              <label>Apodo de la capa</label>
+              <label>Nombre de la capa</label>
               <input type="text" id="ed-name-input" placeholder="Ponle un nombre...">
             </div>
 
-            <!-- Quick Action Buttons -->
+            <!-- Alignment & Quick Actions -->
+            <div class="edit-group">
+              <label>Alineación Rápida</label>
+              <div class="align-grid-pad">
+                <button type="button" class="align-pad-btn" id="btn-align-nw" title="Arriba Izquierda">&#8598;</button>
+                <button type="button" class="align-pad-btn" id="btn-align-n" title="Centrar Arriba">&#8593;</button>
+                <button type="button" class="align-pad-btn" id="btn-align-ne" title="Arriba Derecha">&#8599;</button>
+                <button type="button" class="align-pad-btn" id="btn-align-w" title="Alinear Izquierda">&#8592;</button>
+                <button type="button" class="align-pad-btn align-pad-center" id="btn-align-c" title="Centrar en Pantalla">&#8853;</button>
+                <button type="button" class="align-pad-btn" id="btn-align-e" title="Alinear Derecha">&#8594;</button>
+                <button type="button" class="align-pad-btn" id="btn-align-sw" title="Abajo Izquierda">&#8601;</button>
+                <button type="button" class="align-pad-btn" id="btn-align-s" title="Centrar Abajo">&#8595;</button>
+                <button type="button" class="align-pad-btn" id="btn-align-se" title="Abajo Derecha">&#8600;</button>
+              </div>
+            </div>
+
             <div class="quick-actions">
               <button class="q-btn" id="qa-fit-bounds" title="Ajustar caja exactamente al tamaño del texto/contenido">&#128207; Ajustar caja</button>
               <button class="q-btn" id="qa-center" title="Centrar en pantalla">&#127919; Centrar</button>
@@ -167,35 +188,32 @@
             <div id="edit-text-fields"></div>
 
             <div class="edit-group">
-              <label>Opacidad / Transparencia</label>
-              <div style="display:flex;align-items:center;gap:8px">
-                <input type="range" id="ed-opacity" min="0" max="100" value="100" style="flex:1">
-                <span id="ed-opacity-val" style="font-size:12px;width:32px;text-align:right;font-weight:600">100%</span>
-              </div>
+              <label>Opacidad (<span id="ed-opacity-val">100%</span>)</label>
+              <input type="range" id="ed-opacity" min="0" max="100" value="100">
             </div>
 
             <div class="grid2">
               <div class="edit-group">
-                <label>Posición X</label>
+                <label>Posición X (%)</label>
                 <input type="number" id="ed-x" min="0" max="1" step="0.01">
               </div>
               <div class="edit-group">
-                <label>Posición Y</label>
+                <label>Posición Y (%)</label>
                 <input type="number" id="ed-y" min="0" max="1" step="0.01">
               </div>
             </div>
             <div class="grid2">
               <div class="edit-group">
-                <label>Ancho</label>
+                <label>Ancho (%)</label>
                 <input type="number" id="ed-w" min="0.02" max="1" step="0.01">
               </div>
               <div class="edit-group">
-                <label>Alto</label>
+                <label>Alto (%)</label>
                 <input type="number" id="ed-h" min="0.02" max="1" step="0.01">
               </div>
             </div>
 
-            <div style="display:flex;gap:6px;margin-top:8px">
+            <div style="display:flex;gap:6px;margin-top:10px">
               <button class="btn" id="ed-lock-toggle" style="flex:1">&#128274; Bloquear</button>
               <button class="btn danger" id="ed-del" style="flex:1">&#128465; Borrar</button>
             </div>
@@ -207,8 +225,22 @@
     <!-- Center Stage: Stream Preview & Soundboard -->
     <main class="main-center-stage">
       <div class="main-center">
+        <!-- Canvas Ribbon Tools -->
+        <div class="canvas-top-bar">
+          <div class="canvas-res-pill">🔴 EN DIRECTO · 1920 × 1080 (16:9)</div>
+          <div class="canvas-tools-group">
+            <button type="button" class="canvas-tool-btn" id="btn-toggle-safe-area" title="Mostrar/ocultar guías de margen seguro 16:9">📐 Área Segura</button>
+            <button type="button" class="canvas-tool-btn" id="btn-center-stage" title="Centrar capa seleccionada">&#127919; Centrar</button>
+          </div>
+        </div>
+
         <div class="canvas-wrap">
-          <div id="canvas"></div>
+          <div id="canvas">
+            <div id="canvas-safe-guides" class="safe-guides-overlay" style="display:none">
+              <div class="safe-guide-action" title="Margen de Acción Segura (90%)"></div>
+              <div class="safe-guide-title" title="Margen de Título Seguro (80%)"></div>
+            </div>
+          </div>
         </div>
         <div class="canvas-note">
           <span>Vista previa 16:9</span> · 
@@ -343,6 +375,9 @@
       </div>
     </div>
   </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="toast-container"></div>
 
   <!-- Scripts locales & CDN -->
   <script src="lib/interact.min.js"></script>

@@ -25,6 +25,27 @@
 
   var canvas, listEl, emptyEl, countEl, editSec, edTitleType, edNameInput, dotEl, connTxt, obsBadge, pingBadge;
 
+  /* === Toast Notification System === */
+  function showToast(msg, type) {
+    var container = document.getElementById("toast-container");
+    if (!container) {
+      container = document.createElement("div");
+      container.id = "toast-container";
+      container.className = "toast-container";
+      document.body.appendChild(container);
+    }
+    var item = document.createElement("div");
+    item.className = "toast-item toast-" + (type || "info");
+    var icon = type === "success" ? "✓ " : (type === "error" ? "✕ " : "ℹ ");
+    item.textContent = icon + msg;
+    container.appendChild(item);
+
+    setTimeout(function() {
+      item.classList.add("toast-out");
+      setTimeout(function() { item.remove(); }, 300);
+    }, 2800);
+  }
+
   /* === Init on DOM ready === */
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initLobby);
@@ -912,14 +933,15 @@
         var obsUrl = base + "obs.html?room=" + encodeURIComponent(roomClean);
 
         navigator.clipboard.writeText(obsUrl).then(function() {
-          btnCopy.textContent = "\u2705 \u00A1Link Copiado!";
+          btnCopy.textContent = "✓ ¡Link Copiado!";
           btnCopy.classList.add("copied");
+          showToast("Enlace de Stream copiado al portapapeles 📋", "success");
           setTimeout(function() {
             btnCopy.innerHTML = "&#128203; Copiar Link Stream";
             btnCopy.classList.remove("copied");
           }, 2000);
         }).catch(function() {
-          prompt("Copia este link para tu programa de streaming (Browser Source 1920x1080):", obsUrl);
+          showToast("Enlace: " + obsUrl, "info");
         });
       });
     }
@@ -928,15 +950,13 @@
     if (btnLogout) {
       btnLogout.addEventListener("click", function(e) {
         e.preventDefault();
-        if (confirm("¿Seguro que quieres salir de esta sala mi rey?")) {
-          sessionStorage.removeItem("ugax_active_session");
-          localStorage.removeItem("ugax_last_room");
-          if (db && _currentUser && _currentUser.uid) {
-            db.ref("rooms/" + streamId + "/presence/users/" + _currentUser.uid).remove();
-          }
-          var base = window.location.origin + window.location.pathname;
-          window.location.href = base;
+        sessionStorage.removeItem("ugax_active_session");
+        localStorage.removeItem("ugax_last_room");
+        if (db && _currentUser && _currentUser.uid) {
+          db.ref("rooms/" + streamId + "/presence/users/" + _currentUser.uid).remove();
         }
+        var base = window.location.origin + window.location.pathname;
+        window.location.href = base;
       });
     }
 
@@ -1000,10 +1020,10 @@
 
     function doAddUrl() {
       var u = inUrl.value.trim();
-      if (!u) { alert("Pega un link primero mano xD"); inUrl.focus(); return; }
+      if (!u) { showToast("Pega un enlace multimedia primero", "info"); inUrl.focus(); return; }
       var t = detectType(u);
-      if (!t) { alert("No se pudo detectar el formato. Pon JPG, PNG, GIF, MP4 o MP3 pe."); return; }
-      if (!roomRef) { alert("Sin conexión a Firebase papu. F5 para revivir."); return; }
+      if (!t) { showToast("Formato no soportado. Usa JPG, PNG, GIF, MP4, WEBM o MP3.", "error"); return; }
+      if (!roomRef) { showToast("Sin conexión con el servidor. Recarga la página (F5).", "error"); return; }
       var id = roomRef.push().key;
       var author = _currentUser.name || localStorage.getItem("ugax_user") || "streamer";
       var base = {
@@ -1109,10 +1129,11 @@
 
     function doAddText() {
       var txt = inTxt.value.trim();
-      if (!txt) { alert("Escribe algo pe, no lo dejes vacío xD"); inTxt.focus(); return; }
-      if (!roomRef) { alert("Sin conexión a Firebase papu. F5 para revivir."); return; }
+      if (!txt) { showToast("Escribe un texto primero", "info"); inTxt.focus(); return; }
+      if (!roomRef) { showToast("Sin conexión con el servidor. Recarga la página (F5).", "error"); return; }
       var id = roomRef.push().key;
-      var bounds = calcTightTextBounds(txt);
+      var defFont = "'Montserrat', sans-serif";
+      var bounds = calcTightTextBounds(txt, defFont, 56);
       var author = _currentUser.name || localStorage.getItem("ugax_user") || "streamer";
       
       roomRef.child(id).set({
@@ -1125,19 +1146,20 @@
         addedByPhoto: _currentUser.photoURL || localStorage.getItem("ugax_user_photo") || "",
         text: txt, fontSize: 56,
         textColor: "#ffffff", strokeColor: "#000000", strokeWidth: 5,
-        fontFamily: "'Comic Sans MS', 'Comic Sans', cursive",
+        fontFamily: defFont,
         bgType: "none", bgColor: "#000000", bgOpacity: 0
       });
 
       inTxt.value = "";
       selectRow(id);
       openEdit(id);
+      showToast("Texto enviado al stream ✨", "success");
     }
 
     function doSpeakTtsOnly() {
       var txt = inTxt.value.trim();
-      if (!txt) { alert("Escribe algo para hablar pe xD"); inTxt.focus(); return; }
-      if (!db) { alert("Sin conexión a Firebase papu."); return; }
+      if (!txt) { showToast("Escribe un texto para reproducir con voz", "info"); inTxt.focus(); return; }
+      if (!db) { showToast("Sin conexión con el servidor.", "error"); return; }
       var author = _currentUser.name || localStorage.getItem("ugax_user") || "streamer";
 
       db.ref("streams/" + streamId + "/tts").set({
@@ -1147,6 +1169,7 @@
       });
       speakTts(txt);
       inTxt.value = "";
+      showToast("Voz TTS reproducida en el stream 🗣️", "info");
     }
 
     if (btn) btn.addEventListener("click", doAddText);
@@ -1264,42 +1287,98 @@
     }
   }
 
-  /* === Quick Actions & Toolbar === */
+  /* === Quick Actions, Alignment & Toolbar === */
+  function alignElement(id, position) {
+    if (!state[id] || !roomRef) return;
+    var el = state[id];
+    var curW = (POS_MAP[id] && POS_MAP[id].w != null) ? POS_MAP[id].w : (el.w || 0.3);
+    var curH = (POS_MAP[id] && POS_MAP[id].h != null) ? POS_MAP[id].h : (el.h || 0.08);
+    var nx = el.x || 0;
+    var ny = el.y || 0;
+
+    switch(position) {
+      case "nw": nx = 0; ny = 0; break;
+      case "n": nx = Math.max(0, (1 - curW) / 2); ny = 0; break;
+      case "ne": nx = Math.max(0, 1 - curW); ny = 0; break;
+      case "w": nx = 0; ny = Math.max(0, (1 - curH) / 2); break;
+      case "c": nx = Math.max(0, (1 - curW) / 2); ny = Math.max(0, (1 - curH) / 2); break;
+      case "e": nx = Math.max(0, 1 - curW); ny = Math.max(0, (1 - curH) / 2); break;
+      case "sw": nx = 0; ny = Math.max(0, 1 - curH); break;
+      case "s": nx = Math.max(0, (1 - curW) / 2); ny = Math.max(0, 1 - curH); break;
+      case "se": nx = Math.max(0, 1 - curW); ny = Math.max(0, 1 - curH); break;
+    }
+
+    nx = parseFloat(nx.toFixed(4));
+    ny = parseFloat(ny.toFixed(4));
+    POS_MAP[id] = { x: nx, y: ny, w: curW, h: curH };
+
+    var cel = canvas.querySelector('[data-id="' + id + '"]');
+    if (cel) {
+      cel.style.left = (nx * 100) + "%";
+      cel.style.top = (ny * 100) + "%";
+    }
+    if (editingId === id) syncEdit();
+    roomRef.child(id).update({ x: nx, y: ny });
+    showToast("Capa alineada", "info");
+  }
+
   function initQuickActions() {
-    var btnFit = document.getElementById("qa-fit");
-    if (btnFit) {
-      btnFit.addEventListener("click", function() {
-        if (!editingId || !state[editingId]) return;
-        fitElementToContent(editingId);
+    // 9-Point Alignment Pad
+    var alignPositions = ["nw", "n", "ne", "w", "c", "e", "sw", "s", "se"];
+    alignPositions.forEach(function(pos) {
+      var btn = document.getElementById("btn-align-" + pos);
+      if (btn) {
+        btn.addEventListener("click", function() {
+          var targetId = editingId || selectedId;
+          if (!targetId || !state[targetId]) {
+            showToast("Selecciona una capa primero para alinear", "info");
+            return;
+          }
+          alignElement(targetId, pos);
+        });
+      }
+    });
+
+    // Canvas Top Ribbon Tools
+    var btnSafe = document.getElementById("btn-toggle-safe-area");
+    var guidesOverlay = document.getElementById("canvas-safe-guides");
+    if (btnSafe && guidesOverlay) {
+      btnSafe.addEventListener("click", function() {
+        var isShown = guidesOverlay.style.display !== "none";
+        guidesOverlay.style.display = isShown ? "none" : "block";
+        btnSafe.classList.toggle("active", !isShown);
+        showToast(isShown ? "Guías de Área Segura desactivadas" : "Guías de Área Segura activadas (90% / 80%)", "info");
+      });
+    }
+
+    var btnCenterStage = document.getElementById("btn-center-stage");
+    if (btnCenterStage) {
+      btnCenterStage.addEventListener("click", function() {
+        var targetId = editingId || selectedId;
+        if (!targetId || !state[targetId]) {
+          showToast("Selecciona una capa para centrar", "info");
+          return;
+        }
+        alignElement(targetId, "c");
       });
     }
 
     var btnCenter = document.getElementById("qa-center");
     if (btnCenter) {
       btnCenter.addEventListener("click", function() {
-        if (!editingId || !state[editingId] || !roomRef) return;
-        var cur = POS_MAP[editingId] || state[editingId];
-        var w = cur.w || 0.3;
-        var h = cur.h || 0.08;
-        var nx = Math.max(0, (1 - w) / 2);
-        var ny = Math.max(0, (1 - h) / 2);
-        POS_MAP[editingId].x = nx;
-        POS_MAP[editingId].y = ny;
-        var cel = canvas.querySelector('[data-id="' + editingId + '"]');
-        if (cel) {
-          cel.style.left = (nx * 100) + "%";
-          cel.style.top = (ny * 100) + "%";
-        }
-        syncEdit();
-        roomRef.child(editingId).update({ x: nx, y: ny });
+        var targetId = editingId || selectedId;
+        if (!targetId || !state[targetId]) return;
+        alignElement(targetId, "c");
       });
     }
 
     var btnFit = document.getElementById("qa-fit-bounds");
     if (btnFit) {
       btnFit.addEventListener("click", function() {
-        if (!editingId || !state[editingId]) return;
-        fitElementToContent(editingId);
+        var targetId = editingId || selectedId;
+        if (!targetId || !state[targetId]) return;
+        fitElementToContent(targetId);
+        showToast("Caja ajustada al tamaño exacto", "success");
       });
     }
 
@@ -1318,6 +1397,7 @@
         }
         syncEdit();
         roomRef.child(editingId).update({ x: 0, y: 0, w: 1, h: 1 });
+        showToast("Modo cine / pantalla completa aplicado", "info");
       });
     }
 
@@ -1336,6 +1416,7 @@
         var isLocked = state[editingId].locked === true;
         roomRef.child(editingId).update({ locked: !isLocked });
         btnLockToggle.innerHTML = isLocked ? "&#128274; Bloquear" : "&#128275; Desbloquear";
+        showToast(isLocked ? "Capa desbloqueada" : "Capa bloqueada 🔒", "info");
       });
     }
   }
@@ -1490,28 +1571,30 @@
     });
 
     if (tbDel) tbDel.addEventListener("click", function() {
-      if (!selectedId) { alert("Selecciona una capa primero mano"); return; }
-      if (confirm("\u00BFVas a borrar esta capa mi rey?")) {
-        var toDel = selectedId;
-        if (roomRef) roomRef.child(toDel).remove();
-        if (editingId === toDel) closeEdit();
-        selectedId = null;
-      }
+      if (!selectedId) { showToast("Selecciona una capa primero", "info"); return; }
+      var toDel = selectedId;
+      if (roomRef) roomRef.child(toDel).remove();
+      if (editingId === toDel) closeEdit();
+      selectedId = null;
+      showToast("Capa eliminada", "info");
     });
 
     if (tbUp) tbUp.addEventListener("click", function() {
-      if (!selectedId) { alert("Selecciona una capa primero mano"); return; }
+      if (!selectedId) { showToast("Selecciona una capa primero", "info"); return; }
       moveLayer(selectedId, 1); // 1 paso adelante (sube en la lista)
+      showToast("Capa movida al frente", "info");
     });
 
     if (tbDown) tbDown.addEventListener("click", function() {
-      if (!selectedId) { alert("Selecciona una capa primero mano"); return; }
+      if (!selectedId) { showToast("Selecciona una capa primero", "info"); return; }
       moveLayer(selectedId, -1); // 1 paso atrás (baja en la lista)
+      showToast("Capa movida al fondo", "info");
     });
 
     if (tbClone) tbClone.addEventListener("click", function() {
-      if (!selectedId) { alert("Selecciona una capa primero mano"); return; }
+      if (!selectedId) { showToast("Selecciona una capa primero", "info"); return; }
       duplicateLayer(selectedId);
+      showToast("Capa duplicada ✨", "success");
     });
   }
 
@@ -2138,18 +2221,20 @@
         '<div class="edit-group"><label>Texto</label>' +
         '<input type="text" id="ed-text" value="' + esc2(el.text || "") + '"></div>' +
         '<div class="grid2">' +
-        '  <div class="edit-group"><label>Fuente</label>' +
+        '  <div class="edit-group"><label>Fuente Tipográfica</label>' +
         '    <select id="ed-font">' +
-        '      <option value="\'Comic Sans MS\', \'Comic Sans\', cursive">Comic Sans</option>' +
-        '      <option value="Impact, Charcoal, sans-serif">Impact</option>' +
-        '      <option value="\'Arial Black\', Gadget, sans-serif">Arial Black</option>' +
-        '      <option value="\'Montserrat\', sans-serif">Montserrat</option>' +
-        '      <option value="\'Trebuchet MS\', sans-serif">Trebuchet MS</option>' +
-        '      <option value="\'Courier New\', monospace">Courier New</option>' +
+        '      <option value="\'Montserrat\', sans-serif">Montserrat (Limpia / Moderna)</option>' +
+        '      <option value="Impact, Charcoal, sans-serif">Impact (Meme Clásico)</option>' +
+        '      <option value="\'Orbitron\', sans-serif">Orbitron (Gaming / Cyber)</option>' +
+        '      <option value="\'Bebas Neue\', cursive">Bebas Neue (Titular Bold)</option>' +
+        '      <option value="\'Permanent Marker\', cursive">Permanent Marker (Graffiti)</option>' +
+        '      <option value="\'Bungee\', cursive">Bungee (Arcade Pop)</option>' +
+        '      <option value="\'Comic Sans MS\', \'Comic Sans\', cursive">Comic Sans (Casual)</option>' +
+        '      <option value="\'Inter\', sans-serif">Inter (Minimalista)</option>' +
         '    </select>' +
         '  </div>' +
-        '  <div class="edit-group"><label>Tamaño Relativo (' + (el.fontSize || 56) + ')</label>' +
-        '    <input type="range" id="ed-fontsize" min="20" max="120" value="' + (el.fontSize || 56) + '">' +
+        '  <div class="edit-group"><label>Escala Relativa (' + (el.fontSize || 56) + ')</label>' +
+        '    <input type="range" id="ed-fontsize" min="20" max="140" value="' + (el.fontSize || 56) + '">' +
         '  </div>' +
         '</div>' +
         '<div class="grid2">' +

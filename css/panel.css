@@ -1193,13 +1193,212 @@ main {
 .resize-w { top: 50%; left: 0%; cursor: ew-resize; }
 .resize-e { top: 50%; left: 100%; cursor: ew-resize; }
 
+/* Canvas Top Ribbon */
+.canvas-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: calc((100vh - 210px) * 16 / 9);
+  margin-bottom: 6px;
+  padding: 0 4px;
+}
+
+.canvas-res-pill {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: 0.3px;
+}
+
+.canvas-tools-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.canvas-tool-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.canvas-tool-btn:hover {
+  background: var(--row-hover);
+  border-color: var(--muted);
+  color: var(--text-bright);
+}
+
+.canvas-tool-btn.active {
+  background: rgba(83, 252, 24, 0.15);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Safe Area Guides Overlay */
+.safe-guides-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 900;
+}
+
+.safe-guide-action {
+  position: absolute;
+  inset: 5%;
+  border: 1px dashed rgba(83, 252, 24, 0.35);
+  pointer-events: none;
+}
+
+.safe-guide-title {
+  position: absolute;
+  inset: 10%;
+  border: 1px dashed rgba(59, 130, 246, 0.35);
+  pointer-events: none;
+}
+
+/* Edit Section Header */
+.edit-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.edit-section-header h2 {
+  padding: 0;
+  background: transparent;
+  border-bottom: none;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-bright);
+}
+
+.badge-active-layer {
+  font-size: 9px;
+  font-weight: 800;
+  background: rgba(83, 252, 24, 0.15);
+  color: var(--accent);
+  border: 1px solid rgba(83, 252, 24, 0.3);
+  padding: 2px 6px;
+  border-radius: 10px;
+  letter-spacing: 0.5px;
+}
+
+.edit-section-body {
+  padding: 10px 12px;
+}
+
+/* 9-Point Alignment Grid Pad */
+.align-grid-pad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  background: var(--surface);
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.align-pad-btn {
+  background: var(--row);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 6px 0;
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.12s;
+}
+
+.align-pad-btn:hover {
+  background: var(--accent);
+  color: #000;
+  border-color: var(--accent);
+}
+
+.align-pad-btn:active {
+  transform: scale(0.94);
+}
+
+.align-pad-center {
+  background: rgba(83, 252, 24, 0.1);
+  color: var(--accent);
+  border-color: rgba(83, 252, 24, 0.25);
+}
+
+/* Toast Notification System */
+.toast-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.toast-item {
+  pointer-events: auto;
+  min-width: 240px;
+  max-width: 380px;
+  background: #111520;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6), 0 0 1px 1px rgba(83, 252, 24, 0.15);
+  border-radius: 8px;
+  padding: 10px 14px;
+  color: var(--text-bright);
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: toastIn 0.25s ease-out forwards;
+  transition: opacity 0.25s, transform 0.25s;
+}
+
+.toast-item.toast-success {
+  border-left: 3px solid var(--accent);
+}
+
+.toast-item.toast-error {
+  border-left: 3px solid var(--danger);
+}
+
+.toast-item.toast-info {
+  border-left: 3px solid #3b82f6;
+}
+
+.toast-item.toast-out {
+  opacity: 0;
+  transform: translateX(30px);
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 .el img, .el video {
   width: 100%;
   height: 100%;
   object-fit: contain;
   display: block;
   pointer-events: none;
-  background: #000;
+  background: transparent;
 }
 
 .el.hidden-el {
@@ -1240,7 +1439,7 @@ main {
   justify-content: center;
   text-align: center;
   white-space: nowrap;
-  overflow: visible;
+  overflow: hidden;
   padding: 0;
   margin: 0;
   line-height: 1;
