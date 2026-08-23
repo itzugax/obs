@@ -953,16 +953,31 @@
           var nh = img.naturalHeight || 300;
           var imgAspect = nw / nh;
           var normAspect = imgAspect / (16 / 9);
-          var targetH = 0.30;
+          var targetH = (imgAspect < 1) ? 0.48 : 0.30;
           var targetW = targetH * normAspect;
           if (targetW > 0.85) { targetW = 0.85; targetH = targetW / normAspect; }
-          if (targetH > 0.65) { targetH = 0.65; targetW = targetH * normAspect; }
-          roomRef.child(id).update({ w: parseFloat(targetW.toFixed(3)), h: parseFloat(targetH.toFixed(3)) });
+          if (targetH > 0.85) { targetH = 0.85; targetW = targetH * normAspect; }
+          roomRef.child(id).update({ w: parseFloat(targetW.toFixed(4)), h: parseFloat(targetH.toFixed(4)) });
         };
         img.src = u;
       }
       if (t === "audio") { base.volume = 100; base.loop = false; base.w = 0.20; base.h = 0.08; }
-      if (t === "video") { base.volume = 100; base.loop = false; base.objectFit = "contain"; }
+      if (t === "video") {
+        base.volume = 100; base.loop = false; base.objectFit = "contain";
+        var v = document.createElement("video");
+        v.onloadedmetadata = function() {
+          var nw = v.videoWidth || 1920;
+          var nh = v.videoHeight || 1080;
+          var videoAspect = nw / nh;
+          var normAspect = videoAspect / (16 / 9);
+          var targetH = (videoAspect < 1) ? 0.52 : 0.32;
+          var targetW = targetH * normAspect;
+          if (targetW > 0.85) { targetW = 0.85; targetH = targetW / normAspect; }
+          if (targetH > 0.85) { targetH = 0.85; targetW = targetH * normAspect; }
+          roomRef.child(id).update({ w: parseFloat(targetW.toFixed(4)), h: parseFloat(targetH.toFixed(4)) });
+        };
+        v.src = u;
+      }
       roomRef.child(id).set(base);
       inUrl.value = "";
       selectRow(id);
@@ -978,12 +993,24 @@
     });
   }
 
-  /* Helper to calculate tight text bounding box (fixes oversized selection box for short texts like 'sans') */
-  function calcTightTextBounds(txt) {
-    var len = Math.max(1, (txt || "").length);
-    var w = Math.max(0.06, Math.min(0.9, (len * 0.0165) + 0.038));
-    var h = 0.068;
-    return { w: parseFloat(w.toFixed(3)), h: parseFloat(h.toFixed(3)) };
+  /* Helper to calculate exact tight text bounding box (fixes oversized selection box for short texts like 'sans' / 'wasa') */
+  function calcTightTextBounds(txt, fontFamily, fontSize) {
+    var text = txt || "Texto";
+    var fSize = fontSize || 56;
+    var fFam = fontFamily || "'Comic Sans MS', 'Comic Sans', cursive";
+    var cvs = document.createElement("canvas");
+    var ctx = cvs.getContext("2d");
+    ctx.font = "bold " + fSize + "px " + fFam;
+    var metrics = ctx.measureText(text);
+    var pxW = (metrics.width || (text.length * 30)) + 14;
+    var pxH = fSize * 1.15;
+    // Map to 1920x1080 stream coordinates
+    var normW = pxW / 1920;
+    var normH = pxH / 1080;
+    return {
+      w: parseFloat(Math.max(0.04, Math.min(0.95, normW)).toFixed(4)),
+      h: parseFloat(Math.max(0.04, Math.min(0.95, normH)).toFixed(4))
+    };
   }
 
   /* === Add Text === */
@@ -1075,9 +1102,12 @@
             var t = f.type.startsWith("video") ? "video" : f.type.startsWith("audio") ? "audio" : "image";
             if (!roomRef) return;
             var id = roomRef.push().key;
+            var author = _currentUser.name || localStorage.getItem("ugax_user") || "streamer";
             var base = {
               type: t, x: 0.1, y: 0.1, w: 0.35, h: 0.25,
-              z: getNextZ(), url: pub, name: shortName(f.name),
+              z: getNextZ(), url: pub, name: "@" + author,
+              addedBy: author,
+              addedByPhoto: _currentUser.photoURL || localStorage.getItem("ugax_user_photo") || "",
               opacity: 100, visible: true, locked: false
             };
             if (t === "image") {
@@ -1086,16 +1116,33 @@
               img.onload = function() {
                 var nw = img.naturalWidth || 16;
                 var nh = img.naturalHeight || 9;
-                var normAspect = (nw / nh) / (16 / 9);
-                var targetW = 0.38;
-                var targetH = targetW / normAspect;
-                if (targetH > 0.65) { targetH = 0.65; targetW = targetH * normAspect; }
-                roomRef.child(id).update({ w: targetW, h: targetH });
+                var imgAspect = nw / nh;
+                var normAspect = imgAspect / (16 / 9);
+                var targetH = (imgAspect < 1) ? 0.48 : 0.30;
+                var targetW = targetH * normAspect;
+                if (targetW > 0.85) { targetW = 0.85; targetH = targetW / normAspect; }
+                if (targetH > 0.85) { targetH = 0.85; targetW = targetH * normAspect; }
+                roomRef.child(id).update({ w: parseFloat(targetW.toFixed(4)), h: parseFloat(targetH.toFixed(4)) });
               };
               img.src = pub;
             }
             if (t === "audio") { base.volume = 100; base.loop = false; base.w = 0.20; base.h = 0.08; }
-            if (t === "video") { base.volume = 100; base.loop = false; base.objectFit = "contain"; }
+            if (t === "video") {
+              base.volume = 100; base.loop = false; base.objectFit = "contain";
+              var v = document.createElement("video");
+              v.onloadedmetadata = function() {
+                var nw = v.videoWidth || 1920;
+                var nh = v.videoHeight || 1080;
+                var videoAspect = nw / nh;
+                var normAspect = videoAspect / (16 / 9);
+                var targetH = (videoAspect < 1) ? 0.52 : 0.32;
+                var targetW = targetH * normAspect;
+                if (targetW > 0.85) { targetW = 0.85; targetH = targetW / normAspect; }
+                if (targetH > 0.85) { targetH = 0.85; targetW = targetH * normAspect; }
+                roomRef.child(id).update({ w: parseFloat(targetW.toFixed(4)), h: parseFloat(targetH.toFixed(4)) });
+              };
+              v.src = pub;
+            }
             roomRef.child(id).set(base);
             it.querySelector("span:last-child").className = "ok";
             it.querySelector("span:last-child").textContent = "Listo rey";
@@ -1756,8 +1803,8 @@
     var text = elData.text || "";
     var len = Math.max(1, text.length);
 
-    var maxFsByH = boxH * 0.72;
-    var maxFsByW = (boxW * 0.94) / (len * 0.62);
+    var maxFsByH = boxH * 0.90;
+    var maxFsByW = (boxW * 0.98) / (len * 0.58);
     var baseFs = Math.max(8, Math.min(maxFsByH, maxFsByW));
     var userScale = (elData.fontSize || 56) / 56;
     var dynFs = Math.max(8, Math.round(baseFs * userScale));
