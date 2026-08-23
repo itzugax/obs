@@ -310,7 +310,7 @@
     // REAL Discord Login Handler — OAuth2 Implicit Flow (sin backend, sin pagar)
     if (btnDiscord) {
       btnDiscord.addEventListener("click", function() {
-        var DISCORD_CLIENT_ID = "TU_CLIENT_ID_AQUI"; // ← reemplaza con tu Client ID de Discord
+        var DISCORD_CLIENT_ID = "1527797262250410076";
         var redirectUri = encodeURIComponent(window.location.origin + window.location.pathname);
         var scope = encodeURIComponent("identify");
         var discordUrl = "https://discord.com/oauth2/authorize" +
