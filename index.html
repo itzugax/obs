@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Panel de Control - Overlays en Vivo</title>
+  <title>Control de UGAX</title>
   <link rel="stylesheet" href="css/panel.css">
 </head>
 <body>
 
 <header>
-  <h1>Overlay Control</h1>
+  <h1>Control de UGAX</h1>
   <span id="stream-label"></span>
   <span id="conn"><span class="dot"></span><span id="conn-text">Conectando...</span></span>
 </header>
@@ -18,27 +18,27 @@
   <aside>
     <!-- Tabs: URL / Subir / Texto -->
     <section class="card" id="add-section">
-      <h2>Agregar elemento</h2>
+      <h2>Metele cositas al stream</h2>
       <div class="tabs">
-        <button class="tab active" data-tab="url">URL</button>
-        <button class="tab" data-tab="file">Subir PC</button>
-        <button class="tab" data-tab="text">Texto</button>
+        <button class="tab active" data-tab="url">Pegar link</button>
+        <button class="tab" data-tab="file">Subir de tu PC</button>
+        <button class="tab" data-tab="text">Poner texto</button>
       </div>
 
       <!-- TAB: URL -->
       <div class="tab-body active" id="tab-url">
-        <label for="url-input">URL del archivo multimedia</label>
-        <input type="url" id="url-input" placeholder="https://ejemplo.com/imagen.png">
-        <div class="hint">Tipo detectado: <b id="type-hint">---</b></div>
-        <button id="add-url" class="btn primary">Agregar al lienzo</button>
+        <label for="url-input">Pega el link de la imagen/video/audio</label>
+        <input type="url" id="url-input" placeholder="https://memes.com/godino.png">
+        <div class="hint">Se detecto: <b id="type-hint">nada aun</b></div>
+        <button id="add-url" class="btn primary">Mandalo al stream</button>
       </div>
 
       <!-- TAB: Subir archivo -->
       <div class="tab-body" id="tab-file">
         <div id="drop-zone" class="drop-zone">
           <div class="drop-icon">+</div>
-          <div>Arrastra archivos aqui</div>
-          <div class="hint">o haz click para seleccionar</div>
+          <div>Tira los archivos aca</div>
+          <div class="hint">o hace click pa buscar</div>
           <input type="file" id="file-input" accept="image/*,video/*,audio/*" multiple hidden>
         </div>
         <div id="upload-list" class="upload-list"></div>
@@ -46,36 +46,36 @@
 
       <!-- TAB: Texto -->
       <div class="tab-body" id="tab-text">
-        <label for="text-input">Texto</label>
-        <input type="text" id="text-input" placeholder="Escribe tu texto aqui...">
+        <label for="text-input">Escribi lo que quieras poner</label>
+        <input type="text" id="text-input" placeholder="FRAUD detected">
         <div class="inline-row">
           <div class="field">
             <label>Tamano</label>
             <input type="number" id="text-size" value="48" min="8" max="200">
           </div>
           <div class="field">
-            <label>Fuente</label>
+            <label>Letra</label>
             <select id="text-font">
               <option value="Arial, sans-serif">Arial</option>
-              <option value="Impact, sans-serif">Impact</option>
+              <option value="Impact, sans-serif">Impact (memes)</option>
               <option value="Georgia, serif">Georgia</option>
               <option value="Courier New, monospace">Courier</option>
               <option value="Verdana, sans-serif">Verdana</option>
-              <option value="Comic Sans MS, cursive">Comic Sans</option>
+              <option value="Comic Sans MS, cursive">Comic Sans (troll)</option>
             </select>
           </div>
         </div>
         <div class="inline-row">
           <div class="field">
-            <label>Color texto</label>
+            <label>Color del texto</label>
             <input type="color" id="text-color" value="#ffffff">
           </div>
           <div class="field">
-            <label>Color fondo</label>
+            <label>Color de fondo</label>
             <input type="color" id="text-bg" value="#000000">
           </div>
           <div class="field">
-            <label>Opacidad fondo</label>
+            <label>Opacidad del fondo</label>
             <input type="range" id="text-bg-opacity" min="0" max="100" value="0">
           </div>
         </div>
@@ -83,34 +83,34 @@
           <label><input type="checkbox" id="text-bold" checked> Negrita</label>
           <label><input type="checkbox" id="text-italic"> Cursiva</label>
         </div>
-        <button id="add-text" class="btn primary">Agregar texto</button>
+        <button id="add-text" class="btn primary">Poner el texto en pantalla</button>
       </div>
     </section>
 
-    <!-- Editar elemento (oculto por defecto) -->
+    <!-- Editar elemento -->
     <section class="card" id="edit-section" style="display:none">
-      <h2>Editar elemento</h2>
+      <h2>Editar cosita</h2>
       <div id="edit-url-fields" style="display:none">
-        <label for="edit-url-input">URL del archivo</label>
+        <label for="edit-url-input">Link nuevo</label>
         <input type="url" id="edit-url-input" placeholder="https://...">
       </div>
       <div id="edit-text-fields" style="display:none">
         <label for="edit-text-input">Texto</label>
-        <input type="text" id="edit-text-input" placeholder="Texto...">
+        <input type="text" id="edit-text-input" placeholder="Escribi aca...">
         <div class="inline-row">
           <div class="field">
             <label>Tamano</label>
             <input type="number" id="edit-text-size" value="48" min="8" max="200">
           </div>
           <div class="field">
-            <label>Fuente</label>
+            <label>Letra</label>
             <select id="edit-text-font">
               <option value="Arial, sans-serif">Arial</option>
-              <option value="Impact, sans-serif">Impact</option>
+              <option value="Impact, sans-serif">Impact (memes)</option>
               <option value="Georgia, serif">Georgia</option>
               <option value="Courier New, monospace">Courier</option>
               <option value="Verdana, sans-serif">Verdana</option>
-              <option value="Comic Sans MS, cursive">Comic Sans</option>
+              <option value="Comic Sans MS, cursive">Comic Sans (troll)</option>
             </select>
           </div>
         </div>
@@ -145,38 +145,38 @@
       <!-- Opacidad -->
       <div class="edit-group">
         <div class="inline-row">
-          <div class="field" style="flex:3"><label>Opacidad general</label><input type="range" id="edit-opacity" min="0" max="100" value="100"></div>
+          <div class="field" style="flex:3"><label>Opacidad (que tan transparente)</label><input type="range" id="edit-opacity" min="0" max="100" value="100"></div>
           <div class="field" style="flex:0 0 40px;text-align:center"><label>&nbsp;</label><span id="edit-opacity-val">100</span>%</div>
         </div>
       </div>
       <div class="inline-row">
-        <button id="edit-save" class="btn primary">Guardar</button>
-        <button id="edit-cancel" class="btn">Cancelar</button>
+        <button id="edit-save" class="btn primary">Guardar cambios</button>
+        <button id="edit-cancel" class="btn">Na, dejalo asi</button>
       </div>
     </section>
 
     <!-- Acciones globales -->
     <section class="card">
-      <h2>Acciones globales</h2>
+      <h2>Botones mágicos</h2>
       <div class="grid2">
         <button id="hide-all" class="btn">Ocultar todo</button>
         <button id="show-all" class="btn">Mostrar todo</button>
       </div>
-      <button id="clear-all" class="btn danger">Limpiar pantalla</button>
+      <button id="clear-all" class="btn danger">Borrar TODO del stream</button>
     </section>
 
     <!-- Lista de elementos -->
     <section class="card grow">
-      <h2>Elementos (<span id="count">0</span>)</h2>
+      <h2>Capas del stream (<span id="count">0</span>)</h2>
       <div id="list"></div>
-      <div id="empty-msg" class="empty">Sin elementos todavia...</div>
+      <div id="empty-msg" class="empty">No hay nada todavia, metele algo...</div>
     </section>
   </aside>
 
   <main>
     <div class="canvas-wrap">
       <div id="canvas"></div>
-      <p class="canvas-note">Lienzo 1920x1080 | Arrastra = mover | Bordes = redimensionar | Doble clic = traer al frente | Ctrl+V = pegar imagen</p>
+      <p class="canvas-note">Lienzo 1920x1080 | Arrastralo = mover | Los bordes = agrandar | Doble clic = traer al frente | Ctrl+V = pegar screenshot</p>
     </div>
   </main>
 </div>

@@ -402,15 +402,15 @@ function handleFiles(files) {
     sb.storage.from("wasa").upload(path, file, { upsert: true }).then(function (res) {
       if (res.error) {
         item.querySelector("span:last-child").className = "fail";
-        item.querySelector("span:last-child").textContent = "Error: " + res.error.message;
+        item.querySelector("span:last-child").textContent = "Se rompio: " + res.error.message;
         return;
       }
       var pub = sb.storage.from("wasa").getPublicUrl(path).data.publicUrl;
       var type = detectType(file.name);
       pushElement(type, { url: pub });
       item.querySelector("span:last-child").className = "ok";
-      item.querySelector("span:last-child").textContent = "Listo";
-    });
+      item.querySelector("span:last-child").textContent = "Listo pa usar";
+    }
   });
 }
 
@@ -503,7 +503,7 @@ showAllBtn.addEventListener("click", function () {
 });
 
 clearAllBtn.addEventListener("click", function () {
-  if (confirm("Eliminar TODOS los elementos?")) roomRef.remove();
+  if (confirm("Queres borrar TODO del stream? No hay vuelta atras eh")) roomRef.remove();
 });
 
 /* ================================================================
@@ -617,5 +617,5 @@ roomRef.on("child_removed", function (snap) { removeNode(snap.key); });
 db.ref(".info/connected").on("value", function (snap) {
   var on = snap.val() === true;
   connDot.classList.toggle("on", on);
-  connText.textContent = on ? "Conectado" : "Sin conexion";
+  connText.textContent = on ? "Conectado papu" : "Se cayo todo";
 });
