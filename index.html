@@ -41,8 +41,17 @@
           <span class="lobby-hint">Si la sala es nueva, este PIN queda guardado como clave</span>
         </div>
 
-        <button type="submit" class="btn-kick-primary" id="btn-enter-room">ENTRAR</button>
+        <button type="submit" class="btn-kick-primary" id="btn-enter-room">ENTRAR AL PANEL</button>
       </form>
+
+      <div class="lobby-tips">
+        <div class="lobby-tips-title">💡 ¿Cómo funciona?</div>
+        <ul>
+          <li><b>1.</b> Ingresa tu <b>Nickname</b> y el <b>Código de Sala (6 dígitos)</b>.</li>
+          <li><b>2.</b> El <b>PIN</b> protege tu sala para que nadie modifique tu stream.</li>
+          <li><b>3.</b> Usa el botón <i>Copiar Link</i> en tu programa de streaming (OBS / Streamlabs / VMix) como Navegador (1920x1080).</li>
+        </ul>
+      </div>
     </div>
   </div>
 
@@ -55,11 +64,12 @@
           <h1>UGAX <span class="kick-green">STUDIO</span></h1>
         </div>
         <span id="stream-label" class="room-pill" title="Sala actual">---</span>
-        <button class="header-btn" id="btn-copy-obs" title="Copiar enlace para el Browser Source de tu software de streaming">&#128203; Copiar Link</button>
-        <button class="header-btn user-btn" id="btn-user-login" title="Cambiar usuario o sala">&#128100; <span id="user-display">---</span></button>
+        <button class="header-btn" id="btn-copy-obs" title="Copiar enlace del Overlay para tu programa de streaming">&#128203; Copiar Link Stream</button>
+        <button class="header-btn user-btn" id="btn-user-login" title="Perfil y usuario">&#128100; <span id="user-display">---</span></button>
       </div>
       <div id="conn">
         <button class="panic-btn" id="btn-panic" title="Ocultar todas las capas en caso de emergencia">&#128065;&#8205;&#128488; P&aacute;nico</button>
+        <button class="logout-btn" id="btn-logout" title="Salir de la sala actual">&#128682; Salir</button>
         <span class="obs-badge" id="obs-badge" title="Estado del software de streaming">&#128225; Stream: Buscando...</span>
         <span class="ping-badge" id="ping-badge" title="Latencia con el server">-- ms</span>
         <div class="dot" id="dot"></div>

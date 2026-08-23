@@ -160,7 +160,7 @@ body {
 .btn-kick-primary {
   width: 100%;
   background: var(--kick-green);
-  color: #050505;
+  color: #050505 !important;
   font-size: 14px;
   font-weight: 800;
   text-transform: uppercase;
@@ -175,12 +175,46 @@ body {
 
 .btn-kick-primary:hover {
   background: var(--accent-hover);
+  color: #050505 !important;
   transform: translateY(-1px);
 }
 
 .btn-kick-primary:active {
   transform: scale(0.98);
 }
+
+/* Lobby tips box */
+.lobby-tips {
+  margin-top: 20px;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.lobby-tips-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-bright);
+  margin-bottom: 6px;
+}
+
+.lobby-tips ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.lobby-tips li {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.5;
+  margin-bottom: 4px;
+}
+
+.lobby-tips li:last-child { margin-bottom: 0; }
+.lobby-tips b { color: var(--text); }
+.lobby-tips i { color: var(--kick-green); font-style: normal; }
 
 /* ============================================
    APP HEADER — Kick Style
@@ -261,17 +295,19 @@ header h1 {
 
 .header-btn.user-btn:hover {
   background: var(--kick-green);
-  color: #050505;
+  color: #050505 !important;
+  font-weight: 700;
   border-color: var(--kick-green);
 }
 
 .header-btn.copied {
   background: var(--ok);
-  color: #050505;
+  color: #050505 !important;
+  font-weight: 700;
   border-color: var(--ok);
 }
 
-/* Panic button */
+/* Panic & Logout buttons */
 .panic-btn {
   background: rgba(239, 68, 68, 0.12);
   border: 1px solid rgba(239, 68, 68, 0.35);
@@ -288,6 +324,24 @@ header h1 {
 .panic-btn:hover {
   background: var(--danger);
   color: #fff;
+  border-color: var(--danger);
+}
+
+.logout-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 4px 10px;
+  border-radius: var(--radius);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.logout-btn:hover {
+  background: var(--danger);
+  color: #ffffff;
   border-color: var(--danger);
 }
 
@@ -414,7 +468,8 @@ aside {
 
 .tab.active {
   background: var(--accent);
-  color: var(--text-bright);
+  color: #050505;
+  font-weight: 800;
   border-color: var(--accent);
 }
 
@@ -557,11 +612,13 @@ input[type="range"] {
 
 .btn.primary {
   background: var(--accent);
-  color: var(--text-bright);
+  color: #050505 !important;
+  font-weight: 800;
 }
 
 .btn.primary:hover {
   background: var(--accent-hover);
+  color: #050505 !important;
 }
 
 .btn.danger {

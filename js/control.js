@@ -491,18 +491,30 @@
       btnCopy.addEventListener("click", function() {
         var base = window.location.href.split("?")[0].replace("index.html", "");
         if (!base.endsWith("/")) base += "/";
-        var obsUrl = base + "obs.html?room=" + encodeURIComponent(streamId);
+        var roomClean = streamId.replace(/^sala-/, "");
+        var obsUrl = base + "obs.html?room=" + encodeURIComponent(roomClean);
 
         navigator.clipboard.writeText(obsUrl).then(function() {
-          btnCopy.textContent = "\u2705 \u00A1Copiado fino!";
+          btnCopy.textContent = "\u2705 \u00A1Link Copiado!";
           btnCopy.classList.add("copied");
           setTimeout(function() {
-            btnCopy.innerHTML = "&#128203; Copiar Link OBS";
+            btnCopy.innerHTML = "&#128203; Copiar Link Stream";
             btnCopy.classList.remove("copied");
           }, 2000);
         }).catch(function() {
-          prompt("Copia este link pa meterlo al Browser Source de OBS:", obsUrl);
+          prompt("Copia este link para tu programa de streaming (Browser Source 1920x1080):", obsUrl);
         });
+      });
+    }
+
+    var btnLogout = document.getElementById("btn-logout");
+    if (btnLogout) {
+      btnLogout.addEventListener("click", function() {
+        if (confirm("\u00BFSeguro que quieres salir de esta sala mi rey?")) {
+          localStorage.removeItem("ugax_last_room");
+          var base = window.location.href.split("?")[0];
+          window.location.href = base;
+        }
       });
     }
 

@@ -7,7 +7,8 @@
   if (!box) return;
 
   var urlParams = new URLSearchParams(window.location.search);
-  var streamId = urlParams.get("room") || (typeof STREAM_ID !== "undefined" && STREAM_ID) || "sala-stream-demo";
+  var rawRoom = urlParams.get("room") || (typeof STREAM_ID !== "undefined" && STREAM_ID) || "sala-stream-demo";
+  var streamId = rawRoom.startsWith("sala-") ? rawRoom : ("sala-" + rawRoom);
 
   /* Firebase */
   try {
@@ -26,34 +27,40 @@
     }
     var db = firebase.database();
     
-    // Elements listener
+    // Enable offline persistence/cache for real-time updates
+    try {
+      db.ref("streams/" + streamId + "/elements").keepSynced(true);
+      db.ref("streams/" + streamId + "/sfx").keepSynced(true);
+    } catch(e) {}
+
+    // Elements listener (Instant 8ms render response)
     db.ref("streams/" + streamId + "/elements").on("value", function(snap) {
       state = snap.val() || {};
       clearTimeout(_tid);
-      _tid = setTimeout(renderAll, 30);
+      _tid = setTimeout(renderAll, 8);
     });
 
-    // OBS Presence Heartbeat
+    // Stream Presence Heartbeat
     var presenceRef = db.ref("streams/" + streamId + "/presence/obs");
     presenceRef.set(Date.now());
     presenceRef.onDisconnect().remove();
     setInterval(function() {
       presenceRef.set(Date.now());
-    }, 5000);
+    }, 4000);
 
     // Instant Meme / Reaction Soundboard Player (No layers created)
     var _lastSfxTs = Date.now();
     db.ref("streams/" + streamId + "/sfx").on("value", function(snap) {
       var data = snap.val();
       if (!data || !data.url || !data.ts) return;
-      if (data.ts <= _lastSfxTs || (Date.now() - data.ts) > 10000) return;
+      if (data.ts <= _lastSfxTs || (Date.now() - data.ts) > 15000) return;
       _lastSfxTs = data.ts;
 
       try {
         var a = new Audio(data.url);
         a.volume = 1.0;
         a.play().catch(function(err) {
-          console.warn("OBS SFX play error:", err);
+          console.warn("SFX play error:", err);
         });
       } catch (e) {
         console.error("SFX error:", e);
@@ -62,7 +69,7 @@
 
   } catch (e) {
     console.error("Firebase error:", e);
-    box.innerHTML = '<div style="color:red;padding:20px;text-align:center">Error de conexion OBS</div>';
+    box.innerHTML = '<div style="color:red;padding:20px;text-align:center">Error de conexión al servidor de streaming</div>';
     return;
   }
 
