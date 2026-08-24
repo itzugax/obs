@@ -1326,63 +1326,200 @@
   }
 
   function initYouTubeChat() {
-    var inVid = document.getElementById("ytVideoIdIn");
-    var btnConnect = document.getElementById("btnConnectYtChat");
+    var inApiKey  = document.getElementById("ytApiKeyIn");
+    var inVid     = document.getElementById("ytVideoIdIn");
+    var btnConnect= document.getElementById("btnConnectYtChat");
+    var btnStop   = document.getElementById("btnStopYtChat");
     var btnAddOverlay = document.getElementById("btnAddChatOverlay");
-    var statusEl = document.getElementById("yt-chat-status");
+    var statusEl  = document.getElementById("yt-chat-status");
 
-    if (inVid && db) {
-      db.ref("streams/" + streamId + "/yt_chat").on("value", function(snap) {
+    var _ytPollInterval = null;
+    var _ytPageToken = null;
+    var _ytLiveChatId = null;
+    var _seenMsgIds = {};
+
+    function setStatus(msg, color) {
+      if (statusEl) statusEl.innerHTML = "<span style='color:" + (color || "var(--muted)") + "'>" + msg + "</span>";
+    }
+
+    // Restore saved API key from localStorage
+    if (inApiKey) {
+      var savedKey = localStorage.getItem("ugax_yt_api_key");
+      if (savedKey) inApiKey.value = savedKey;
+    }
+
+    // Restore saved video ID and connection from Firebase
+    if (db) {
+      db.ref("streams/" + streamId + "/yt_chat").once("value", function(snap) {
         var data = snap.val();
-        if (data && data.videoId) {
+        if (data && data.videoId && inVid && !inVid.value) {
           inVid.value = data.videoId;
-          if (statusEl) statusEl.innerHTML = "<span style='color:#53fc18'>🟢 Conectado:</span> " + data.videoId;
         }
       });
+    }
+
+    function stopPolling() {
+      if (_ytPollInterval) { clearInterval(_ytPollInterval); _ytPollInterval = null; }
+      _ytLiveChatId = null;
+      _ytPageToken = null;
+      setStatus("⚫ Desconectado");
+      if (btnConnect) { btnConnect.textContent = "▶ Iniciar Chat"; btnConnect.className = "btn primary"; }
+      if (db) db.ref("streams/" + streamId + "/yt_chat").update({ connected: false });
+    }
+
+    function userColorFromId(channelId) {
+      var COLORS = ["#FF6B6B","#4ECDC4","#45B7D1","#96CEB4","#FFEAA7","#DDA0DD","#98D8C8","#F7DC6F","#82E0AA","#85C1E9","#F1948A","#BB8FCE","#73C6B6","#F8C471","#AED6F1","#A9DFBF","#FAD7A0"];
+      var hash = 0;
+      for (var i = 0; i < (channelId || "x").length; i++) {
+        hash = ((hash << 5) - hash) + (channelId || "x").charCodeAt(i);
+        hash |= 0;
+      }
+      return COLORS[Math.abs(hash) % COLORS.length];
+    }
+
+    function pushMessage(msg) {
+      var id = msg.id;
+      if (_seenMsgIds[id]) return;
+      _seenMsgIds[id] = true;
+
+      var snippet = msg.snippet || {};
+      var author  = msg.authorDetails || {};
+      var text    = snippet.displayMessage || snippet.textMessageDetails && snippet.textMessageDetails.messageText || "";
+      if (!text) return;
+
+      var chatMsgRef = db ? db.ref("streams/" + streamId + "/yt_chat_messages").push() : null;
+      if (chatMsgRef) {
+        chatMsgRef.set({
+          msgId: id,
+          authorName: author.displayName || "Viewer",
+          authorPhoto: author.profileImageUrl || "",
+          authorChannelId: author.channelId || "",
+          isMod: !!(author.isChatModerator),
+          isMember: !!(author.isChatSponsor),
+          isOwner: !!(author.isChatOwner),
+          text: text,
+          color: userColorFromId(author.channelId || author.displayName),
+          ts: Date.now()
+        });
+      }
+
+      // Handle chat commands
+      var lower = text.toLowerCase().trim();
+      if (lower.startsWith("!tts ")) {
+        var ttsText = text.slice(5);
+        if (roomRef) {
+          var ttsId = roomRef.push().key;
+          roomRef.child(ttsId).set({
+            type: "text", text: ttsText,
+            x: 0.10, y: 0.78, w: 0.80, h: 0.10,
+            z: 9999, opacity: 100, visible: true,
+            name: "TTS: " + author.displayName,
+            tts: true, ttsTrigger: Date.now(),
+            addedBy: author.displayName || "viewer",
+            textColor: "#ffffff", strokeColor: "#000000",
+            bgColor: "#000000", bgOpacity: 0,
+            fontFamily: "'Montserrat', sans-serif", fontSize: 56
+          });
+          setTimeout(function() { if (roomRef) roomRef.child(ttsId).remove(); }, 12000);
+        }
+      }
+    }
+
+    function fetchMessages() {
+      if (!_ytLiveChatId) return;
+      var apiKey = (inApiKey && inApiKey.value.trim()) || localStorage.getItem("ugax_yt_api_key") || "";
+      if (!apiKey) return;
+      var url = "https://www.googleapis.com/youtube/v3/liveChat/messages"
+        + "?liveChatId=" + encodeURIComponent(_ytLiveChatId)
+        + "&part=snippet,authorDetails&maxResults=200&key=" + encodeURIComponent(apiKey)
+        + (_ytPageToken ? "&pageToken=" + _ytPageToken : "");
+
+      fetch(url)
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.error) {
+            setStatus("❌ Error API: " + (data.error.message || "ver consola"), "#ef4444");
+            console.error("YT Chat API error:", data.error);
+            return;
+          }
+          _ytPageToken = data.nextPageToken || null;
+          var items = data.items || [];
+          for (var i = 0; i < items.length; i++) pushMessage(items[i]);
+          var pollMs = data.pollingIntervalMillis || 5000;
+          if (_ytPollInterval) clearInterval(_ytPollInterval);
+          _ytPollInterval = setInterval(fetchMessages, Math.max(pollMs, 4000));
+        })
+        .catch(function(err) {
+          setStatus("❌ Error de red", "#ef4444");
+          console.error("YT Chat fetch error:", err);
+        });
+    }
+
+    function getLiveChatId(videoId, apiKey) {
+      setStatus("🟡 Conectando...", "#facc15");
+      var url = "https://www.googleapis.com/youtube/v3/videos"
+        + "?id=" + encodeURIComponent(videoId)
+        + "&part=liveStreamingDetails&key=" + encodeURIComponent(apiKey);
+
+      fetch(url)
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.error) {
+            setStatus("❌ API Key inválida: " + (data.error.message || ""), "#ef4444");
+            return;
+          }
+          var items = data.items || [];
+          if (!items.length) {
+            setStatus("❌ Video no encontrado. ¿Es un directo activo?", "#ef4444");
+            return;
+          }
+          var lsd = items[0].liveStreamingDetails || {};
+          var lcid = lsd.activeLiveChatId;
+          if (!lcid) {
+            setStatus("❌ Sin Live Chat activo. El stream debe estar EN VIVO.", "#ef4444");
+            return;
+          }
+          _ytLiveChatId = lcid;
+          _seenMsgIds = {};
+          if (db) db.ref("streams/" + streamId + "/yt_chat").set({ videoId: videoId, liveChatId: lcid, connected: true, connectedAt: Date.now() });
+          setStatus("🟢 Chat conectado · " + videoId, "#53fc18");
+          if (btnConnect) { btnConnect.textContent = "⟳ Reconectar"; btnConnect.className = "btn"; }
+          fetchMessages();
+        })
+        .catch(function(err) {
+          setStatus("❌ Error de red al conectar", "#ef4444");
+          console.error("YT getLiveChatId error:", err);
+        });
     }
 
     if (btnConnect) {
       btnConnect.addEventListener("click", function() {
-        var raw = (inVid && inVid.value) || "";
-        var vidId = extractYouTubeVideoId(raw);
-        if (!vidId) {
-          showToast("Ingresa el enlace o ID de tu directo de YouTube", "info");
-          if (inVid) inVid.focus();
-          return;
-        }
-        if (db) {
-          db.ref("streams/" + streamId + "/yt_chat").set({
-            videoId: vidId,
-            connectedAt: Date.now(),
-            connectedBy: _currentUser.name || "streamer"
-          });
-        }
-        if (statusEl) statusEl.innerHTML = "<span style='color:#53fc18'>🟢 Conectado:</span> " + vidId;
-        showToast("Chat de YouTube vinculado 🔴", "success");
+        var apiKey = (inApiKey && inApiKey.value.trim()) || "";
+        var raw    = (inVid && inVid.value.trim()) || "";
+        var vidId  = extractYouTubeVideoId(raw);
+        if (!apiKey) { showToast("Ingresa tu YouTube Data API Key primero", "info"); if (inApiKey) inApiKey.focus(); return; }
+        if (!vidId)  { showToast("Ingresa el link o ID del directo de YouTube", "info"); if (inVid) inVid.focus(); return; }
+        localStorage.setItem("ugax_yt_api_key", apiKey);
+        stopPolling();
+        getLiveChatId(vidId, apiKey);
       });
+    }
+
+    if (btnStop) {
+      btnStop.addEventListener("click", function() { stopPolling(); });
     }
 
     if (btnAddOverlay) {
       btnAddOverlay.addEventListener("click", function() {
-        var raw = (inVid && inVid.value) || "";
-        var vidId = extractYouTubeVideoId(raw);
-        if (!vidId) {
-          showToast("Ingresa el link de tu directo primero", "info");
-          if (inVid) inVid.focus();
-          return;
-        }
         if (!roomRef) return;
         var id = roomRef.push().key;
         var author = _currentUser.name || "streamer";
         roomRef.child(id).set({
-          type: "chat",
-          chatPlatform: "youtube",
-          videoId: vidId,
-          x: 0.70, y: 0.50, w: 0.28, h: 0.45,
+          type: "chat", chatPlatform: "youtube",
+          x: 0.70, y: 0.04, w: 0.29, h: 0.92,
           z: getNextZ(), opacity: 100, visible: true,
           name: "💬 Chat YouTube",
-          locked: false,
-          addedBy: author,
+          locked: false, addedBy: author,
           addedByPhoto: _currentUser.photoURL || ""
         });
         selectRow(id);

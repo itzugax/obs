@@ -295,29 +295,67 @@
       w.style.boxShadow = (el.borderWidth > 0) ? "0 4px 14px rgba(0,0,0,0.5)" : "none";
 
     } else if (el.type === "chat") {
-      // YouTube Live Chat iframe overlay
+      // Custom styled chat — reads messages from Firebase, renders like StreamElements
       d.style.overflow = "hidden";
-      w.style.width = "100%";
-      w.style.height = "100%";
-      w.style.background = "transparent";
-      w.style.overflow = "hidden";
+      w.style.cssText = "width:100%;height:100%;background:transparent;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;gap:0;padding:0;box-sizing:border-box;";
 
-      var ifr = w.querySelector(".yt-chat-iframe");
-      var vidId = el.videoId || "";
-      var expectedSrc = vidId ? "https://www.youtube.com/live_chat?v=" + vidId + "&embed_domain=" + location.hostname + "&dark_theme=1" : "";
+      var chatBox = w.querySelector(".ugax-chat-box");
+      if (!chatBox) {
+        chatBox = document.createElement("div");
+        chatBox.className = "ugax-chat-box";
+        chatBox.style.cssText = "width:100%;display:flex;flex-direction:column;gap:5px;justify-content:flex-end;overflow:hidden;padding:6px 0;box-sizing:border-box;";
+        w.appendChild(chatBox);
 
-      if (!ifr) {
-        ifr = document.createElement("iframe");
-        ifr.className = "yt-chat-iframe";
-        ifr.setAttribute("frameborder", "0");
-        ifr.setAttribute("allowtransparency", "true");
-        ifr.style.cssText = "width:100%;height:100%;border:none;background:transparent;display:block;border-radius:8px";
-        w.appendChild(ifr);
-      }
-      if (vidId && ifr.src !== expectedSrc) {
-        ifr.src = expectedSrc;
-      } else if (!vidId) {
-        ifr.removeAttribute("src");
+        // Set up Firebase listener for chat messages on this element
+        if (typeof firebase !== "undefined" && firebase.database) {
+          var chatRef = firebase.database().ref("streams/" + streamId + "/yt_chat_messages");
+          chatRef.limitToLast(15).on("child_added", function(snap) {
+            var msg = snap.val();
+            if (!msg) return;
+            var msgEl = document.createElement("div");
+            msgEl.style.cssText = "display:flex;align-items:flex-start;gap:6px;padding:5px 8px;border-radius:8px;background:rgba(10,12,18,0.78);backdrop-filter:blur(4px);animation:chatSlideIn 0.28s cubic-bezier(.16,1,.3,1) both;flex-shrink:0;max-width:100%;box-sizing:border-box;overflow:hidden;";
+
+            var badgeHtml = "";
+            if (msg.isOwner) badgeHtml += "<span style='font-size:10px;background:#FF0000;color:#fff;border-radius:3px;padding:1px 4px;font-weight:700;flex-shrink:0'>YT</span>";
+            if (msg.isMod)   badgeHtml += "<span style='font-size:10px;background:#3ea6ff;color:#fff;border-radius:3px;padding:1px 4px;font-weight:700;flex-shrink:0'>MOD</span>";
+            if (msg.isMember)badgeHtml += "<span style='font-size:10px;background:#53fc18;color:#000;border-radius:3px;padding:1px 4px;font-weight:700;flex-shrink:0'>MEM</span>";
+
+            var photoHtml = msg.authorPhoto
+              ? "<img src='" + msg.authorPhoto + "' style='width:22px;height:22px;border-radius:50%;object-fit:cover;flex-shrink:0;margin-top:1px' onerror=\"this.style.display='none'\">"
+              : "";
+
+            msgEl.innerHTML =
+              photoHtml +
+              "<div style='display:flex;flex-direction:column;min-width:0;flex:1;overflow:hidden'>" +
+                "<div style='display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-bottom:2px'>" +
+                  badgeHtml +
+                  "<span style='font-family:Montserrat,sans-serif;font-size:12px;font-weight:800;color:" + (msg.color || "#53fc18") + ";white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px'>" +
+                    escapeHtml(msg.authorName || "Viewer") +
+                  "</span>" +
+                "</div>" +
+                "<span style='font-family:Montserrat,sans-serif;font-size:13px;font-weight:500;color:#f1f5f9;word-break:break-word;line-height:1.3'>" +
+                  escapeHtml(msg.text || "") +
+                "</span>" +
+              "</div>";
+
+            chatBox.appendChild(msgEl);
+
+            // Keep max 12 messages, remove old ones
+            var msgs = chatBox.children;
+            while (msgs.length > 12) chatBox.removeChild(chatBox.firstChild);
+
+            // Auto scroll
+            msgEl.scrollIntoView({ behavior: "smooth" });
+          });
+
+          // Inject animation keyframes once
+          if (!document.getElementById("ugax-chat-style")) {
+            var sty = document.createElement("style");
+            sty.id = "ugax-chat-style";
+            sty.textContent = "@keyframes chatSlideIn{from{opacity:0;transform:translateY(12px) scale(0.97)}to{opacity:1;transform:none}}";
+            document.head.appendChild(sty);
+          }
+        }
       }
 
     } else if (el.type === "audio") {
@@ -447,5 +485,14 @@
     var g = parseInt(h.slice(3, 5), 16);
     var b = parseInt(h.slice(5, 7), 16);
     return r + "," + g + "," + b;
+  }
+
+  function escapeHtml(str) {
+    return String(str || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
   }
 })();
