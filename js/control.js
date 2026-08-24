@@ -672,6 +672,7 @@
     initAddUrl();
     initAddText();
     initAddWidgets();
+    initYouTubeChat();
     initFileUpload();
     initToolbar();
     initQuickActions();
@@ -1312,6 +1313,83 @@
         }
       });
     }, 1000);
+  }
+
+  /* === YouTube Live Chat Integration === */
+  function extractYouTubeVideoId(urlOrId) {
+    if (!urlOrId) return "";
+    var clean = urlOrId.trim();
+    var match = clean.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|live\/)|live_chat\?v=)([\w-]{11})/);
+    if (match && match[1]) return match[1];
+    if (/^[\w-]{11}$/.test(clean)) return clean;
+    return clean;
+  }
+
+  function initYouTubeChat() {
+    var inVid = document.getElementById("ytVideoIdIn");
+    var btnConnect = document.getElementById("btnConnectYtChat");
+    var btnAddOverlay = document.getElementById("btnAddChatOverlay");
+    var statusEl = document.getElementById("yt-chat-status");
+
+    if (inVid && db) {
+      db.ref("streams/" + streamId + "/yt_chat").on("value", function(snap) {
+        var data = snap.val();
+        if (data && data.videoId) {
+          inVid.value = data.videoId;
+          if (statusEl) statusEl.innerHTML = "<span style='color:#53fc18'>🟢 Conectado:</span> " + data.videoId;
+        }
+      });
+    }
+
+    if (btnConnect) {
+      btnConnect.addEventListener("click", function() {
+        var raw = (inVid && inVid.value) || "";
+        var vidId = extractYouTubeVideoId(raw);
+        if (!vidId) {
+          showToast("Ingresa el enlace o ID de tu directo de YouTube", "info");
+          if (inVid) inVid.focus();
+          return;
+        }
+        if (db) {
+          db.ref("streams/" + streamId + "/yt_chat").set({
+            videoId: vidId,
+            connectedAt: Date.now(),
+            connectedBy: _currentUser.name || "streamer"
+          });
+        }
+        if (statusEl) statusEl.innerHTML = "<span style='color:#53fc18'>🟢 Conectado:</span> " + vidId;
+        showToast("Chat de YouTube vinculado 🔴", "success");
+      });
+    }
+
+    if (btnAddOverlay) {
+      btnAddOverlay.addEventListener("click", function() {
+        var raw = (inVid && inVid.value) || "";
+        var vidId = extractYouTubeVideoId(raw);
+        if (!vidId) {
+          showToast("Ingresa el link de tu directo primero", "info");
+          if (inVid) inVid.focus();
+          return;
+        }
+        if (!roomRef) return;
+        var id = roomRef.push().key;
+        var author = _currentUser.name || "streamer";
+        roomRef.child(id).set({
+          type: "chat",
+          chatPlatform: "youtube",
+          videoId: vidId,
+          x: 0.70, y: 0.50, w: 0.28, h: 0.45,
+          z: getNextZ(), opacity: 100, visible: true,
+          name: "💬 Chat YouTube",
+          locked: false,
+          addedBy: author,
+          addedByPhoto: _currentUser.photoURL || ""
+        });
+        selectRow(id);
+        openEdit(id);
+        showToast("Caja de Chat agregada al stream 💬", "success");
+      });
+    }
   }
 
   /* === File Upload === */
@@ -2213,6 +2291,24 @@
       wrap.style.boxSizing = "border-box";
       wrap.style.boxShadow = (el.borderWidth > 0) ? "0 4px 14px rgba(0,0,0,0.5)" : "none";
 
+    } else if (el.type === "chat") {
+      if (txtEl) txtEl.style.display = "none";
+      if (audEl) audEl.style.display = "none";
+      if (imgEl) imgEl.style.display = "none";
+      if (vidEl) vidEl.style.display = "none";
+
+      var chatPreview = wrap.querySelector(".chat-preview-box");
+      if (!chatPreview) {
+        chatPreview = document.createElement("div");
+        chatPreview.className = "chat-preview-box";
+        chatPreview.style.cssText = "width:100%;height:100%;background:rgba(15,18,25,0.85);border:1px solid #252a36;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;padding:8px;box-sizing:border-box;pointer-events:none";
+        chatPreview.innerHTML = "<span style='font-size:13px;font-weight:800;color:#53fc18;margin-bottom:4px'>🔴 Chat de YouTube</span><span style='font-size:10px;color:#94a3b8;text-align:center'>En OBS saldrá transparente y en vivo</span>";
+        wrap.appendChild(chatPreview);
+      }
+      chatPreview.style.display = "flex";
+      wrap.style.background = "transparent";
+      wrap.style.border = "none";
+
     } else if (el.type === "audio") {
       if (txtEl) txtEl.style.display = "none";
       if (audEl) audEl.style.display = "";
@@ -2657,6 +2753,31 @@
         if (fontSel) {
           fontSel.value = el.fontFamily || "'Montserrat', sans-serif";
           fontSel.addEventListener("change", function() { if (roomRef) roomRef.child(id).update({ fontFamily: fontSel.value }); });
+        }
+      }, 50);
+    }
+
+    if (el.type === "chat") {
+      tf.innerHTML =
+        '<div class="edit-group"><label>ID / Link del Directo de YouTube</label>' +
+        '  <input type="text" id="ed-chat-vidid" value="' + (el.videoId || "") + '" placeholder="ID o link de YouTube">' +
+        '</div>' +
+        '<div style="margin-bottom:8px;font-size:11px;color:var(--muted)">El chat aparecerá en el overlay del OBS en vivo usando el iframe oficial de YouTube Live Chat.</div>' +
+        '<button class="btn primary" id="btn-update-chat-vid" style="width:100%">🔄 Actualizar Video ID</button>';
+
+      setTimeout(function() {
+        var vidInput = document.getElementById("ed-chat-vidid");
+        var updateBtn = document.getElementById("btn-update-chat-vid");
+        if (updateBtn && vidInput) {
+          updateBtn.addEventListener("click", function() {
+            var raw = vidInput.value.trim();
+            var match = raw.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|live\/)|live_chat\?v=)([\w-]{11})/);
+            var vidId = (match && match[1]) ? match[1] : (/^[\w-]{11}$/.test(raw) ? raw : raw);
+            if (roomRef && vidId) {
+              roomRef.child(id).update({ videoId: vidId });
+              showToast("Chat actualizado: " + vidId, "success");
+            }
+          });
         }
       }, 50);
     }

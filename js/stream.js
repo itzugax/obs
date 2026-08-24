@@ -294,6 +294,32 @@
       w.style.borderRadius = (el.borderRadius != null ? el.borderRadius : 8) + "px";
       w.style.boxShadow = (el.borderWidth > 0) ? "0 4px 14px rgba(0,0,0,0.5)" : "none";
 
+    } else if (el.type === "chat") {
+      // YouTube Live Chat iframe overlay
+      d.style.overflow = "hidden";
+      w.style.width = "100%";
+      w.style.height = "100%";
+      w.style.background = "transparent";
+      w.style.overflow = "hidden";
+
+      var ifr = w.querySelector(".yt-chat-iframe");
+      var vidId = el.videoId || "";
+      var expectedSrc = vidId ? "https://www.youtube.com/live_chat?v=" + vidId + "&embed_domain=" + location.hostname + "&dark_theme=1" : "";
+
+      if (!ifr) {
+        ifr = document.createElement("iframe");
+        ifr.className = "yt-chat-iframe";
+        ifr.setAttribute("frameborder", "0");
+        ifr.setAttribute("allowtransparency", "true");
+        ifr.style.cssText = "width:100%;height:100%;border:none;background:transparent;display:block;border-radius:8px";
+        w.appendChild(ifr);
+      }
+      if (vidId && ifr.src !== expectedSrc) {
+        ifr.src = expectedSrc;
+      } else if (!vidId) {
+        ifr.removeAttribute("src");
+      }
+
     } else if (el.type === "audio") {
       w.style.display = "none";
       var aud = w.querySelector("audio");
@@ -378,12 +404,13 @@
   }
 
   function formatClockTime(el) {
-    if (!el) return "--:--:--";
+    if (!el) return "--:--";
     if (el.clockMode === "timer") {
-      var sec = el.timerSeconds || 300;
-      if (el.timerRunning && el.timerStartedAt) {
+      var totalSec = (el.timerSeconds != null ? el.timerSeconds : 300);
+      var sec = totalSec;
+      if (el.timerRunning === true && el.timerStartedAt) {
         var elapsed = Math.floor((Date.now() - el.timerStartedAt) / 1000);
-        sec = Math.max(0, sec - elapsed);
+        sec = Math.max(0, totalSec - elapsed);
       }
       var m = Math.floor(sec / 60);
       var s = sec % 60;
@@ -397,14 +424,15 @@
     }
   }
 
-  // Stream live clock interval (updates live text on stream every second)
+  // Stream live clock & countdown ticker (updates live text on stream every second)
   setInterval(function() {
+    if (!box) return;
     var cKeys = Object.keys(state);
     for (var i = 0; i < cKeys.length; i++) {
       var id = cKeys[i];
       var el = state[id];
       if (el && el.type === "clock") {
-        var layerDiv = c.querySelector('[data-id="' + id + '"]');
+        var layerDiv = box.querySelector('[data-id="' + id + '"]');
         if (layerDiv) {
           var sp = layerDiv.querySelector("span");
           if (sp) sp.textContent = formatClockTime(el);

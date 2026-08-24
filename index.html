@@ -119,6 +119,7 @@
           <button class="tab" data-tab="tab-url">&#128279; Enlace</button>
           <button class="tab" data-tab="tab-txt">&#128196; Texto</button>
           <button class="tab" data-tab="tab-widgets">&#9201; Timer</button>
+          <button class="tab" data-tab="tab-chat">&#128172; YouTube</button>
         </div>
 
         <!-- File Tab (Active Default) -->
@@ -156,6 +157,25 @@
             <label>Temporizadores de Stream</label>
             <button class="btn primary" id="btnAddTimer" style="width:100%;margin-bottom:8px">&#9201; Cuenta Regresiva (5 min)</button>
             <button class="btn" id="btnAddClock" style="width:100%">&#128339; Reloj Digital en Vivo</button>
+          </div>
+        </div>
+
+        <!-- YouTube Live Chat Tab -->
+        <div class="tab-body" id="tab-chat">
+          <div class="widget-section">
+            <label>🔴 Chat en Vivo de YouTube</label>
+            <input type="text" id="ytVideoIdIn" placeholder="Link o ID del directo de YouTube" style="margin-bottom:8px">
+            <div style="display:flex;gap:6px;margin-bottom:10px">
+              <button class="btn primary" id="btnConnectYtChat" style="flex:1">&#128279; Conectar Chat</button>
+              <button class="btn" id="btnAddChatOverlay" style="flex:1" title="Poner caja de chat transparente en el stream">&#128250; Ver en Stream</button>
+            </div>
+            <label>⚡ Comandos para tus Viewers</label>
+            <div style="font-size:11px;color:var(--muted);background:var(--surface);padding:8px;border-radius:var(--radius);border:1px solid var(--border);line-height:1.5">
+              • <b style="color:#53fc18">!tts &lt;texto&gt;</b> : Lee voz en vivo.<br>
+              • <b style="color:#53fc18">!meme &lt;link&gt;</b> : Muestra imagen/video.<br>
+              • <b style="color:#53fc18">!sfx wasa</b> : Toca sonido de soundboard.
+            </div>
+            <div id="yt-chat-status" style="font-size:11px;margin-top:8px;color:var(--muted)">Estado: Desconectado</div>
           </div>
         </div>
 

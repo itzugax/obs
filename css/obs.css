@@ -1,8 +1,58 @@
-html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:transparent}
-#stage{position:relative;width:100vw;height:100vh;overflow:hidden;background:transparent}
-.ov{position:absolute;left:0;top:0;width:0;height:0;box-sizing:border-box;transition:left .12s linear,top .12s linear,width .12s linear,height .12s linear,opacity .18s ease}
-.ov.no-trans{transition:none}
-.ov img,.ov video{width:100%;height:100%;object-fit:contain;display:block;background:transparent}
-.ov.audio-only{opacity:0;pointer-events:none;width:0;height:0}
-.ov.inactive{opacity:0;pointer-events:none}
-.ov.text-only{display:flex;align-items:center;justify-content:center;text-align:center;word-wrap:break-word;overflow:hidden;padding:0;line-height:1}
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Bungee&family=Inter:wght@400;700;900&family=Montserrat:wght@700;900&family=Orbitron:wght@700;900&family=Permanent+Marker&display=swap');
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+}
+
+#stage {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: transparent;
+}
+
+.ov {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  box-sizing: border-box;
+  transition: left .12s linear, top .12s linear, width .12s linear, height .12s linear, opacity .18s ease;
+}
+
+.ov.no-trans { transition: none; }
+.ov img, .ov video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  background: transparent;
+}
+
+.ov.audio-only { opacity: 0; pointer-events: none; width: 0; height: 0; }
+.ov.inactive { opacity: 0; pointer-events: none; }
+
+.ov > div {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.ov span {
+  display: inline-block;
+  white-space: nowrap;
+  line-height: 1;
+  paint-order: stroke fill !important;
+  -webkit-font-smoothing: antialiased;
+}
+
