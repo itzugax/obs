@@ -1119,11 +1119,22 @@ main {
   transition: border-color 0.12s;
 }
 
-.el.is-text .media-wrap {
-  overflow: hidden;
+.txt-content,
+.el.is-text .media-wrap,
+.el.is-text span {
+  overflow: visible;
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  margin: 0;
+  white-space: nowrap;
+  line-height: 1;
+  box-sizing: border-box;
+  paint-order: stroke fill !important;
+  -webkit-font-smoothing: antialiased;
 }
 
 .el:hover .media-wrap {

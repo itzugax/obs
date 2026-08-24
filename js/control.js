@@ -257,20 +257,8 @@
       if (fbDb) {
         try {
           var userRegRef = fbDb.ref("users_registry/" + username);
-          userRegRef.once("value", function(userSnap) {
-            var regData = userSnap.val();
-            if (regData && regData.uid && regData.uid !== _currentUser.uid) {
-              showLobbyError("❌ El username @" + username + " ya está en uso. Elige otro.");
-              btnEnter.textContent = "ENTRAR AL PANEL";
-              btnEnter.disabled = false;
-              if (inUser) inUser.focus();
-              return;
-            }
-            userRegRef.set({ uid: _currentUser.uid, name: username, photoURL: _currentUser.photoURL, ts: Date.now() });
-            openPinModal(username, roomCode, room);
-          }, function() {
-            openPinModal(username, roomCode, room);
-          });
+          userRegRef.set({ uid: _currentUser.uid, name: username, photoURL: _currentUser.photoURL, ts: Date.now() });
+          openPinModal(username, roomCode, room);
         } catch(ex) {
           openPinModal(username, roomCode, room);
         }
@@ -1119,31 +1107,29 @@
     });
   }
 
-  /* Calculate exact tight text bounding box.
-     Font scales with box height (boxH * 0.88), so we calculate box size to fit font and glyph width. */
-  function calcTightTextBounds(txt, fontFamily, fontSize) {
+  /* Calculate exact tight text bounding box with zero excess margin. */
+  function calcTightTextBounds(txt, fontFamily, fontSize, strokeWidth) {
     var text = txt || "Texto";
     var fSize = fontSize || 56;
     var fFam = fontFamily || "'Montserrat', sans-serif";
+    var sW = (strokeWidth != null ? strokeWidth : 4);
     var cvs = document.createElement("canvas");
     var ctx = cvs.getContext("2d");
     ctx.font = "900 " + fSize + "px " + fFam;
     var m = ctx.measureText(text);
 
-    var pxW = m.width;
-    var pxH = fSize * 0.82;
+    var glyphW = m.width;
+    var glyphH = fSize * 0.76;
     if (m.actualBoundingBoxAscent !== undefined && m.actualBoundingBoxDescent !== undefined) {
-      pxH = m.actualBoundingBoxAscent + m.actualBoundingBoxDescent;
+      glyphH = m.actualBoundingBoxAscent + m.actualBoundingBoxDescent;
     }
 
-    var boxH_1080 = (pxH / 0.88) + 2;
-    var boxW_1920 = pxW + 6;
+    var totalW = glyphW + sW + 4;
+    var totalH = glyphH + sW + 2;
 
-    var normW = boxW_1920 / 1920;
-    var normH = boxH_1080 / 1080;
     return {
-      w: parseFloat(Math.max(0.015, Math.min(0.98, normW)).toFixed(4)),
-      h: parseFloat(Math.max(0.015, Math.min(0.98, normH)).toFixed(4))
+      w: parseFloat(Math.max(0.01, Math.min(0.98, totalW / 1920)).toFixed(4)),
+      h: parseFloat(Math.max(0.01, Math.min(0.98, totalH / 1080)).toFixed(4))
     };
   }
 
@@ -2584,36 +2570,38 @@
     }
 
     if (el.type === "clock") {
+      var isTimer = (el.clockMode === "timer");
+      var isRunning = (el.timerRunning === true);
       tf.innerHTML =
-        '<div class="edit-group"><label>Modo de Reloj</label>' +
+        '<div class="edit-group"><label>Tipo de Temporizador</label>' +
         '  <select id="ed-clock-mode">' +
-        '    <option value="time"' + (el.clockMode === "time" ? " selected" : "") + '>🕒 Reloj Digital (Hora en Vivo)</option>' +
-        '    <option value="timer"' + (el.clockMode === "timer" ? " selected" : "") + '>⏱️ Cuenta Regresiva (Countdown)</option>' +
+        '    <option value="timer"' + (isTimer ? " selected" : "") + '>⏱️ Cuenta Regresiva (Countdown)</option>' +
+        '    <option value="time"' + (!isTimer ? " selected" : "") + '>🕒 Reloj Digital en Vivo</option>' +
         '  </select>' +
         '</div>' +
-        '<div id="ed-timer-controls" style="' + (el.clockMode === "timer" ? "" : "display:none") + '">' +
+        '<div id="ed-timer-controls" style="' + (isTimer ? "" : "display:none") + '">' +
         '  <div class="edit-group"><label>Duración (Segundos)</label>' +
-        '    <input type="number" id="ed-timer-secs" min="10" max="86400" value="' + (el.timerSeconds || 300) + '">' +
+        '    <input type="number" id="ed-timer-secs" min="5" max="86400" value="' + (el.timerSeconds || 300) + '">' +
         '  </div>' +
-        '  <div style="display:flex;gap:6px;margin-bottom:10px">' +
-        '    <button class="btn primary" id="btn-timer-toggle" style="flex:1">' + (el.timerRunning ? '⏸ Pausar' : '▶ Iniciar') + '</button>' +
+        '  <div style="display:flex;gap:6px;margin-bottom:12px">' +
+        '    <button class="btn' + (isRunning ? "" : " primary") + '" id="btn-timer-toggle" style="flex:1">' + (isRunning ? '⏸ Pausar' : '▶ Iniciar') + '</button>' +
         '    <button class="btn" id="btn-timer-reset" style="flex:1">🔄 Reiniciar</button>' +
         '  </div>' +
         '</div>' +
         '<div class="grid2">' +
         '  <div class="edit-group"><label>Color Dígitos</label>' +
-        '    <input type="color" id="ed-clock-color" value="' + (el.textColor || "#53fc18") + '">' +
+        '    <input type="color" id="ed-clock-color" value="' + (el.textColor || "#ffffff") + '">' +
         '  </div>' +
-        '  <div class="edit-group"><label>Color Fondo</label>' +
-        '    <input type="color" id="ed-clock-bg" value="' + (el.bgColor || "#090c10") + '">' +
+        '  <div class="edit-group"><label>Color Borde</label>' +
+        '    <input type="color" id="ed-clock-stroke" value="' + (el.strokeColor || "#000000") + '">' +
         '  </div>' +
         '</div>' +
         '<div class="edit-group"><label>Fuente</label>' +
         '  <select id="ed-clock-font">' +
+        '    <option value="\'Montserrat\', sans-serif">Montserrat (Negrita Potente)</option>' +
         '    <option value="\'Orbitron\', sans-serif">Orbitron (Digital / Gaming)</option>' +
-        '    <option value="\'Montserrat\', sans-serif">Montserrat (Limpia)</option>' +
-        '    <option value="\'Bebas Neue\', cursive">Bebas Neue (Bold)</option>' +
-        '    <option value="\'Inter\', sans-serif">Inter (Minimalista)</option>' +
+        '    <option value="\'Bebas Neue\', cursive">Bebas Neue (Titular)</option>' +
+        '    <option value="\'Inter\', sans-serif">Inter (Limpia)</option>' +
         '  </select>' +
         '</div>';
 
@@ -2624,7 +2612,7 @@
         var tglBtn = document.getElementById("btn-timer-toggle");
         var rstBtn = document.getElementById("btn-timer-reset");
         var colIn = document.getElementById("ed-clock-color");
-        var bgIn = document.getElementById("ed-clock-bg");
+        var strkIn = document.getElementById("ed-clock-stroke");
         var fontSel = document.getElementById("ed-clock-font");
 
         if (modeSel) {
@@ -2637,17 +2625,22 @@
         if (secIn) {
           secIn.addEventListener("change", function() {
             var v = parseInt(secIn.value) || 300;
-            if (roomRef) roomRef.child(id).update({ timerSeconds: v, timerStartedAt: Date.now() });
+            if (roomRef) roomRef.child(id).update({ timerSeconds: v, timerStartedAt: Date.now(), timerRunning: true });
           });
         }
         if (tglBtn) {
           tglBtn.addEventListener("click", function() {
-            var isRunning = el.timerRunning;
-            if (isRunning) {
-              var elapsed = Math.floor((Date.now() - (el.timerStartedAt || Date.now())) / 1000);
-              var rem = Math.max(0, (el.timerSeconds || 300) - elapsed);
+            var cur = state[id] || el;
+            var running = cur.timerRunning === true;
+            if (running) {
+              var elapsed = Math.floor((Date.now() - (cur.timerStartedAt || Date.now())) / 1000);
+              var rem = Math.max(0, (cur.timerSeconds != null ? cur.timerSeconds : 300) - elapsed);
+              tglBtn.textContent = "▶ Iniciar";
+              tglBtn.className = "btn primary";
               if (roomRef) roomRef.child(id).update({ timerRunning: false, timerSeconds: rem });
             } else {
+              tglBtn.textContent = "⏸ Pausar";
+              tglBtn.className = "btn";
               if (roomRef) roomRef.child(id).update({ timerRunning: true, timerStartedAt: Date.now() });
             }
           });
@@ -2655,107 +2648,15 @@
         if (rstBtn) {
           rstBtn.addEventListener("click", function() {
             var orig = parseInt((secIn && secIn.value) || 300);
+            if (tglBtn) { tglBtn.textContent = "⏸ Pausar"; tglBtn.className = "btn"; }
             if (roomRef) roomRef.child(id).update({ timerSeconds: orig, timerRunning: true, timerStartedAt: Date.now() });
           });
         }
         if (colIn) colIn.addEventListener("input", function() { if (roomRef) roomRef.child(id).update({ textColor: colIn.value }); });
-        if (bgIn) bgIn.addEventListener("input", function() { if (roomRef) roomRef.child(id).update({ bgColor: bgIn.value, bgOpacity: 90 }); });
-        if (fontSel) {
-          fontSel.value = el.fontFamily || "'Orbitron', sans-serif";
-          fontSel.addEventListener("change", function() { if (roomRef) roomRef.child(id).update({ fontFamily: fontSel.value }); });
-        }
-      }, 50);
-    }
-
-    if (el.type === "marquee") {
-      tf.innerHTML =
-        '<div class="edit-group"><label>Texto del Ticker / Anuncio</label>' +
-        '<input type="text" id="ed-marquee-text" value="' + esc2(el.text || "") + '"></div>' +
-        '<div class="edit-group"><label>Velocidad de Movimiento (<span id="ed-speed-val">' + (el.speed || 5) + '</span>/10)</label>' +
-        '<input type="range" id="ed-marquee-speed" min="1" max="10" value="' + (el.speed || 5) + '">' +
-        '</div>' +
-        '<div class="grid2">' +
-        '  <div class="edit-group"><label>Color Texto</label>' +
-        '    <input type="color" id="ed-marquee-color" value="' + (el.textColor || "#ffffff") + '">' +
-        '  </div>' +
-        '  <div class="edit-group"><label>Color Fondo</label>' +
-        '    <input type="color" id="ed-marquee-bg" value="' + (el.bgColor || "#0d1117") + '">' +
-        '  </div>' +
-        '</div>' +
-        '<div class="edit-group"><label>Fuente</label>' +
-        '  <select id="ed-marquee-font">' +
-        '    <option value="\'Montserrat\', sans-serif">Montserrat (Limpia)</option>' +
-        '    <option value="\'Bebas Neue\', cursive">Bebas Neue (Titular)</option>' +
-        '    <option value="\'Orbitron\', sans-serif">Orbitron (Gaming)</option>' +
-        '    <option value="\'Inter\', sans-serif">Inter (Minimalista)</option>' +
-        '  </select>' +
-        '</div>';
-
-      setTimeout(function() {
-        var txtIn = document.getElementById("ed-marquee-text");
-        var spdIn = document.getElementById("ed-marquee-speed");
-        var spdVal = document.getElementById("ed-speed-val");
-        var colIn = document.getElementById("ed-marquee-color");
-        var bgIn = document.getElementById("ed-marquee-bg");
-        var fontSel = document.getElementById("ed-marquee-font");
-
-        if (txtIn) txtIn.addEventListener("input", function() { if (roomRef) roomRef.child(id).update({ text: txtIn.value }); });
-        if (spdIn) {
-          spdIn.addEventListener("input", function() {
-            var v = parseInt(spdIn.value) || 5;
-            if (spdVal) spdVal.textContent = v;
-            if (roomRef) roomRef.child(id).update({ speed: v });
-          });
-        }
-        if (colIn) colIn.addEventListener("input", function() { if (roomRef) roomRef.child(id).update({ textColor: colIn.value }); });
-        if (bgIn) bgIn.addEventListener("input", function() { if (roomRef) roomRef.child(id).update({ bgColor: bgIn.value, bgOpacity: 90 }); });
+        if (strkIn) strkIn.addEventListener("input", function() { if (roomRef) roomRef.child(id).update({ strokeColor: strkIn.value }); });
         if (fontSel) {
           fontSel.value = el.fontFamily || "'Montserrat', sans-serif";
           fontSel.addEventListener("change", function() { if (roomRef) roomRef.child(id).update({ fontFamily: fontSel.value }); });
-        }
-      }, 50);
-    }
-
-    if (el.type === "box") {
-      tf.innerHTML =
-        '<div class="grid2">' +
-        '  <div class="edit-group"><label>Color Borde</label>' +
-        '    <input type="color" id="ed-box-bordercolor" value="' + (el.borderColor || "#53fc18") + '">' +
-        '  </div>' +
-        '  <div class="edit-group"><label>Color Fondo</label>' +
-        '    <input type="color" id="ed-box-bgcolor" value="' + (el.bgColor || "#12161f") + '">' +
-        '  </div>' +
-        '</div>' +
-        '<div class="edit-group"><label>Grosor del Borde (<span id="ed-box-bw-val">' + (el.borderWidth != null ? el.borderWidth : 3) + 'px</span>)</label>' +
-        '<input type="range" id="ed-box-bw" min="0" max="20" value="' + (el.borderWidth != null ? el.borderWidth : 3) + '">' +
-        '</div>' +
-        '<div class="edit-group"><label>Redondeado de Esquinas (<span id="ed-box-br-val">' + (el.borderRadius != null ? el.borderRadius : 8) + 'px</span>)</label>' +
-        '<input type="range" id="ed-box-br" min="0" max="50" value="' + (el.borderRadius != null ? el.borderRadius : 8) + '">' +
-        '</div>';
-
-      setTimeout(function() {
-        var bCol = document.getElementById("ed-box-bordercolor");
-        var bgCol = document.getElementById("ed-box-bgcolor");
-        var bwIn = document.getElementById("ed-box-bw");
-        var bwVal = document.getElementById("ed-box-bw-val");
-        var brIn = document.getElementById("ed-box-br");
-        var brVal = document.getElementById("ed-box-br-val");
-
-        if (bCol) bCol.addEventListener("input", function() { if (roomRef) roomRef.child(id).update({ borderColor: bCol.value }); });
-        if (bgCol) bgCol.addEventListener("input", function() { if (roomRef) roomRef.child(id).update({ bgColor: bgCol.value }); });
-        if (bwIn) {
-          bwIn.addEventListener("input", function() {
-            var v = parseInt(bwIn.value);
-            if (bwVal) bwVal.textContent = v + "px";
-            if (roomRef) roomRef.child(id).update({ borderWidth: v });
-          });
-        }
-        if (brIn) {
-          brIn.addEventListener("input", function() {
-            var v = parseInt(brIn.value);
-            if (brVal) brVal.textContent = v + "px";
-            if (roomRef) roomRef.child(id).update({ borderRadius: v });
-          });
         }
       }, 50);
     }
